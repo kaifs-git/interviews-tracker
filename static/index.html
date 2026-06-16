@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InterviewsTracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            sidebar: '#0f172a',
+            'sidebar-hover': '#1e293b',
+            primary: '#6366f1',
+            'primary-dark': '#4f46e5',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="h-full bg-slate-50 font-sans">
+
+<!-- ═══════════════════════════════════════════════════════ LOGIN PAGE -->
+<div id="login-page" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+  <div class="text-center max-w-md w-full px-6">
+    <!-- Logo -->
+    <div class="flex items-center justify-center mb-8">
+      <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-xl">
+        <i class="fa-solid fa-briefcase text-white text-2xl"></i>
+      </div>
+    </div>
+    <h1 class="text-4xl font-bold text-white mb-2">InterviewsTracker</h1>
+    <p class="text-slate-400 text-lg mb-10">Your personal job search command center</p>
+
+    <!-- Features -->
+    <div class="grid grid-cols-2 gap-4 mb-10 text-left">
+      <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+        <i class="fa-solid fa-building text-indigo-400 mb-2"></i>
+        <p class="text-slate-300 text-sm">Track companies & roles</p>
+      </div>
+      <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+        <i class="fa-solid fa-calendar-check text-indigo-400 mb-2"></i>
+        <p class="text-slate-300 text-sm">Manage interview rounds</p>
+      </div>
+      <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+        <i class="fa-solid fa-star text-indigo-400 mb-2"></i>
+        <p class="text-slate-300 text-sm">Rate your performance</p>
+      </div>
+      <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+        <i class="fa-solid fa-chart-line text-indigo-400 mb-2"></i>
+        <p class="text-slate-300 text-sm">Analytics & insights</p>
+      </div>
+    </div>
+
+    <!-- Login Button -->
+    <button onclick="auth.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-50 text-slate-800 font-semibold py-4 px-6 rounded-xl shadow-lg transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5">
+      <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google" class="w-6 h-6" />
+      Continue with Google
+    </button>
+
+    <p id="login-error" class="mt-4 text-red-400 text-sm hidden"></p>
+    <p class="mt-6 text-slate-500 text-xs">Your data is private and secure.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ APP SHELL -->
+<div id="app-shell" class="hidden h-full flex">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-64 bg-sidebar flex flex-col fixed inset-y-0 left-0 z-30 transition-transform duration-300">
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-6 py-5 border-b border-white/10">
+      <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+        <i class="fa-solid fa-briefcase text-white text-sm"></i>
+      </div>
+      <span class="text-white font-bold text-lg tracking-tight">InterviewsTracker</span>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="flex-1 px-3 py-4 overflow-y-auto">
+      <ul class="space-y-1">
+        <li>
+          <button onclick="router.navigate('dashboard')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-sidebar-hover transition-all text-sm font-medium" data-page="dashboard">
+            <i class="fa-solid fa-gauge-high w-5 text-center"></i>
+            Dashboard
+          </button>
+        </li>
+        <li>
+          <button onclick="router.navigate('applications')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-sidebar-hover transition-all text-sm font-medium" data-page="applications">
+            <i class="fa-solid fa-file-lines w-5 text-center"></i>
+            Applications
+            <span id="app-count-badge" class="ml-auto bg-indigo-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full hidden"></span>
+          </button>
+        </li>
+        <li>
+          <button onclick="router.navigate('companies')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-sidebar-hover transition-all text-sm font-medium" data-page="companies">
+            <i class="fa-solid fa-building w-5 text-center"></i>
+            Companies
+          </button>
+        </li>
+        <li>
+          <button onclick="router.navigate('contacts')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-sidebar-hover transition-all text-sm font-medium" data-page="contacts">
+            <i class="fa-solid fa-address-book w-5 text-center"></i>
+            Contacts
+          </button>
+        </li>
+      </ul>
+      <div class="mt-6 pt-4 border-t border-white/10">
+        <p class="text-slate-500 text-xs font-semibold uppercase tracking-widest px-3 mb-2">Filters</p>
+        <ul class="space-y-1">
+          <li>
+            <button onclick="router.navigate('applications', {result:'Selected'})" class="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-sidebar-hover transition-all text-sm">
+              <i class="fa-solid fa-circle-check text-emerald-500 w-5 text-center"></i>
+              Selections
+            </button>
+          </li>
+          <li>
+            <button onclick="router.navigate('applications', {stage:'Offer'})" class="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-sidebar-hover transition-all text-sm">
+              <i class="fa-solid fa-envelope-open-text text-amber-400 w-5 text-center"></i>
+              Offers
+            </button>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- User Profile -->
+    <div class="px-3 py-4 border-t border-white/10">
+      <div class="flex items-center gap-3 px-3 py-2">
+        <img id="user-avatar" src="" alt="" class="w-8 h-8 rounded-full object-cover bg-slate-600" />
+        <div class="flex-1 min-w-0">
+          <p id="user-name" class="text-white text-sm font-medium truncate"></p>
+          <p id="user-email" class="text-slate-400 text-xs truncate"></p>
+        </div>
+        <button onclick="auth.logout()" title="Logout" class="text-slate-500 hover:text-red-400 transition-colors">
+          <i class="fa-solid fa-arrow-right-from-bracket text-sm"></i>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 ml-64 min-h-screen flex flex-col">
+    <!-- Top Bar -->
+    <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-20">
+      <div>
+        <h1 id="page-title" class="text-xl font-bold text-slate-800"></h1>
+        <p id="page-subtitle" class="text-slate-500 text-sm"></p>
+      </div>
+      <div id="page-actions" class="flex items-center gap-3"></div>
+    </header>
+
+    <!-- Page Content -->
+    <div id="page-content" class="flex-1 p-8"></div>
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ MODALS -->
+<div id="modal-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div id="modal-box" class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+      <h2 id="modal-title" class="text-lg font-semibold text-slate-800"></h2>
+      <button onclick="modal.close()" class="text-slate-400 hover:text-slate-600 transition-colors">
+        <i class="fa-solid fa-xmark text-xl"></i>
+      </button>
+    </div>
+    <div id="modal-body" class="flex-1 overflow-y-auto p-6"></div>
+    <div id="modal-footer" class="px-6 py-4 border-t border-slate-200 flex justify-end gap-3"></div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- Loading Overlay -->
+<div id="loading-overlay" class="hidden fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
+  <div class="text-center">
+    <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3"></div>
+    <p class="text-slate-600 font-medium">Loading...</p>
+  </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/components.js"></script>
+<script src="/static/js/dashboard.js"></script>
+<script src="/static/js/companies.js"></script>
+<script src="/static/js/applications.js"></script>
+<script src="/static/js/interviews.js"></script>
+<script src="/static/js/contacts.js"></script>
+<script src="/static/js/router.js"></script>
+<script src="/static/js/main.js"></script>
+</body>
+</html>

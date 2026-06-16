@@ -1,0 +1,211 @@
+// Contacts page
+const contactsPage = (() => {
+  let contacts = [];
+  let companies = [];
+
+  async function render(params = {}) {
+    setPageHeader('Contacts', 'People you\'ve interacted with during your job search');
+    setPageActions(btn('Add Contact', 'contactsPage.openAddModal()', 'primary', 'fa-plus'));
+
+    const content = document.getElementById('page-content');
+    content.innerHTML = `<div class="flex items-center justify-center py-20"><div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div></div>`;
+
+    try {
+      [contacts, companies] = await Promise.all([
+        api.getContacts(params),
+        api.getCompanies(),
+      ]);
+    } catch (e) {
+      toast.error('Failed to load contacts');
+      contacts = [];
+      companies = [];
+    }
+
+    content.innerHTML = renderList();
+  }
+
+  function renderList() {
+    if (!contacts.length) {
+      return emptyState(
+        'fa-address-book',
+        'No contacts yet',
+        'Add recruiters, hiring managers, and other contacts.',
+        btn('Add Contact', 'contactsPage.openAddModal()', 'primary', 'fa-plus')
+      );
+    }
+
+    const rows = contacts.map(c => `
+      <tr>
+        <td class="px-5 py-4">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-full flex items-center justify-center text-sm font-bold text-indigo-600 flex-shrink-0">
+              ${(c.name || '?')[0].toUpperCase()}
+            </div>
+            <div>
+              <p class="font-semibold text-slate-800 text-sm">${c.name}</p>
+              ${c.linkedin ? `<a href="${c.linkedin}" target="_blank" class="text-xs text-blue-500 hover:underline"><i class="fa-brands fa-linkedin"></i> LinkedIn</a>` : ''}
+            </div>
+          </div>
+        </td>
+        <td class="px-5 py-4 text-sm text-slate-600">${c.designation || '<span class="text-slate-300">—</span>'}${c.department ? `<br><span class="text-xs text-slate-400">${c.department}</span>` : ''}</td>
+        <td class="px-5 py-4 text-sm text-slate-600">${c.company_name || '<span class="text-slate-300">—</span>'}</td>
+        <td class="px-5 py-4">
+          ${c.email ? `<a href="mailto:${c.email}" class="text-sm text-slate-600 hover:text-indigo-600 flex items-center gap-1.5"><i class="fa-solid fa-envelope text-slate-400 text-xs"></i>${c.email}</a>` : ''}
+          ${c.phone ? `<a href="tel:${c.phone}" class="text-sm text-slate-600 hover:text-indigo-600 flex items-center gap-1.5 mt-0.5"><i class="fa-solid fa-phone text-slate-400 text-xs"></i>${c.phone}</a>` : ''}
+          ${!c.email && !c.phone ? '<span class="text-slate-300 text-sm">—</span>' : ''}
+        </td>
+        <td class="px-5 py-4 text-sm text-slate-500">${c.notes ? `<span title="${c.notes}" class="cursor-help">${c.notes.slice(0,40)}${c.notes.length > 40 ? '…' : ''}</span>` : '<span class="text-slate-300">—</span>'}</td>
+        <td class="px-5 py-4">
+          <div class="flex gap-1">
+            <button onclick="contactsPage.openEditModal(${c.id})" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Edit">
+              <i class="fa-solid fa-pen-to-square text-xs"></i>
+            </button>
+            <button onclick="contactsPage.confirmDelete(${c.id},'${c.name.replace(/'/g,"\\\'")}')" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Delete">
+              <i class="fa-solid fa-trash text-xs"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    return `
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <p class="text-sm text-slate-500">${contacts.length} contact${contacts.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Company</th>
+                <th>Contact Info</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function contactForm(c = {}, preselect = {}) {
+    const companyOptions = companies.map(co => ({ value: co.id, label: co.name }));
+    return `
+      <form id="contact-form">
+        <div class="grid grid-cols-2 gap-x-5">
+          ${field('Full Name', 'name', 'text', c.name, { required: true, placeholder: 'Jane Smith' })}
+          ${field('Designation / Title', 'designation', 'text', c.designation, { placeholder: 'Senior Recruiter' })}
+        </div>
+        <div class="grid grid-cols-2 gap-x-5">
+          ${field('Department', 'department', 'text', c.department, { placeholder: 'Engineering, HR...' })}
+          ${field('Company', 'company_id', 'select', c.company_id || preselect.company_id, { required: true, options: companyOptions })}
+        </div>
+        <div class="grid grid-cols-2 gap-x-5">
+          ${field('Email', 'email', 'email', c.email, { placeholder: 'jane@company.com' })}
+          ${field('Phone', 'phone', 'tel', c.phone, { placeholder: '+91 98765 43210' })}
+        </div>
+        ${field('LinkedIn URL', 'linkedin', 'url', c.linkedin, { placeholder: 'https://linkedin.com/in/...' })}
+        ${c.application_id || preselect.application_id ? `<input type="hidden" name="application_id" value="${c.application_id || preselect.application_id}" />` : ''}
+        ${field('Notes', 'notes', 'textarea', c.notes, { placeholder: 'How you met, last conversation...', rows: 2 })}
+      </form>
+    `;
+  }
+
+  function openAddModal(preselect = {}) {
+    modal.open({
+      title: 'Add Contact',
+      body: contactForm({}, preselect),
+      footer: `
+        <button onclick="modal.close()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">Cancel</button>
+        <button onclick="contactsPage.submitCreate()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+          <i class="fa-solid fa-plus mr-1"></i>Add Contact
+        </button>
+      `,
+    });
+  }
+
+  function openAddModalForApp(appId, companyId) {
+    openAddModal({ application_id: appId, company_id: companyId });
+  }
+
+  function openEditModal(id) {
+    const c = contacts.find(c => c.id === id);
+    if (!c) return;
+    modal.open({
+      title: 'Edit Contact',
+      body: contactForm(c),
+      footer: `
+        <button onclick="modal.close()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">Cancel</button>
+        <button onclick="contactsPage.submitUpdate(${id})" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+          Save Changes
+        </button>
+      `,
+    });
+  }
+
+  async function submitCreate() {
+    const form = document.getElementById('contact-form');
+    if (!form) return;
+    const data = getFormData(form);
+    if (!data.name) { toast.warning('Name is required'); return; }
+    if (!data.company_id) { toast.warning('Please select a company'); return; }
+    if (data.company_id) data.company_id = parseInt(data.company_id);
+    if (data.application_id) data.application_id = parseInt(data.application_id);
+    try {
+      const contact = await api.createContact(data);
+      contacts.push(contact);
+      modal.close();
+      document.getElementById('page-content').innerHTML = renderList();
+      toast.success('Contact added');
+      // If we're in app detail, refresh
+      if (typeof applicationDetailPage !== 'undefined' && data.application_id) {
+        applicationDetailPage.refreshDetail();
+      }
+    } catch (e) {
+      toast.error(e.message || 'Failed to add contact');
+    }
+  }
+
+  async function submitUpdate(id) {
+    const form = document.getElementById('contact-form');
+    if (!form) return;
+    const data = getFormData(form);
+    if (data.company_id) data.company_id = parseInt(data.company_id);
+    if (data.application_id) data.application_id = parseInt(data.application_id);
+    try {
+      const updated = await api.updateContact(id, data);
+      const idx = contacts.findIndex(c => c.id === id);
+      if (idx !== -1) contacts[idx] = updated;
+      modal.close();
+      document.getElementById('page-content').innerHTML = renderList();
+      toast.success('Contact updated');
+    } catch (e) {
+      toast.error(e.message || 'Failed to update contact');
+    }
+  }
+
+  function confirmDelete(id, name) {
+    modal.confirm({
+      title: 'Delete Contact',
+      message: `Delete <strong>${name}</strong>?`,
+      onYes: () => deleteContact(id),
+    });
+  }
+
+  async function deleteContact(id) {
+    try {
+      await api.deleteContact(id);
+      contacts = contacts.filter(c => c.id !== id);
+      document.getElementById('page-content').innerHTML = renderList();
+      toast.success('Contact deleted');
+    } catch (e) {
+      toast.error('Failed to delete contact');
+    }
+  }
+
+  return { render, openAddModal, openAddModalForApp, openEditModal, submitCreate, submitUpdate, confirmDelete };
+})();
