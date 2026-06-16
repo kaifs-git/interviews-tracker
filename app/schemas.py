@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, date
 
@@ -6,18 +6,40 @@ from datetime import datetime, date
 # ─── User ────────────────────────────────────────────────────────────────────
 
 class UserBase(BaseModel):
-    email: str
+    email: Optional[str] = None
     name: Optional[str] = None
     picture: Optional[str] = None
 
 
 class UserOut(UserBase):
     id: int
+    username: Optional[str] = None
+    is_admin: bool = False
     is_active: bool
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+# ─── Auth request/response schemas ───────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+
+
+class AuthConfig(BaseModel):
+    methods: List[str]
+    allow_registration: bool
+    google_enabled: bool
 
 
 # ─── Company ──────────────────────────────────────────────────────────────────

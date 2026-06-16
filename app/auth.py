@@ -1,3 +1,5 @@
+import hashlib
+import secrets as _secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
@@ -5,11 +7,7 @@ import httpx
 from .config import settings
 
 
-GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
-GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
-GOOGLE_SCOPES = "openid email profile"
-
+# ─── JWT ──────────────────────────────────────────────────────────────────────
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
@@ -25,6 +23,36 @@ def decode_access_token(token: str) -> Optional[dict]:
         return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     except jwt.PyJWTError:
         return None
+
+
+# ─── Password hashing (stdlib — no external deps) ─────────────────────────────
+
+def hash_password(password: str) -> str:
+    """PBKDF2-HMAC-SHA256 with 260,000 iterations — OWASP recommended."""
+    salt = _secrets.token_hex(32)
+    key = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), salt.encode("utf-8"), 260_000
+    )
+    return f"pbkdf2:sha256:260000:{salt}:{key.hex()}"
+
+
+def verify_password(stored_hash: str, provided: str) -> bool:
+    try:
+        _, algo, iters, salt, stored_key = stored_hash.split(":")
+        key = hashlib.pbkdf2_hmac(
+            algo, provided.encode("utf-8"), salt.encode("utf-8"), int(iters)
+        )
+        return _secrets.compare_digest(key.hex(), stored_key)
+    except Exception:
+        return False
+
+
+# ─── Google OAuth ─────────────────────────────────────────────────────────────
+
+GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+GOOGLE_SCOPES = "openid email profile"
 
 
 def get_google_auth_url(state: str) -> str:
@@ -56,8 +84,7 @@ async def exchange_google_code(code: str) -> Optional[dict]:
         if token_resp.status_code != 200:
             return None
 
-        token_data = token_resp.json()
-        access_token = token_data.get("access_token")
+        access_token = token_resp.json().get("access_token")
         if not access_token:
             return None
 
