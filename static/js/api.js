@@ -24,7 +24,13 @@ const api = (() => {
     if (res.status === 204) return null;
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    if (!res.ok) {
+      const detail = data.detail;
+      const msg = Array.isArray(detail)
+        ? detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+        : (typeof detail === 'string' ? detail : `HTTP ${res.status}`);
+      throw new Error(msg);
+    }
     return data;
   }
 

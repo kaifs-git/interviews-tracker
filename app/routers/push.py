@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Any, Dict
 
 from ..dependencies import get_db, get_current_user
 from .. import models
@@ -8,6 +8,16 @@ from ..models import PushSubscription
 from ..services.settings_service import get_setting
 
 router = APIRouter(prefix="/api/push", tags=["push"])
+
+
+class PushSubscribeBody(BaseModel):
+    endpoint: str
+    p256dh: str
+    auth: str
+
+
+class PushUnsubscribeBody(BaseModel):
+    endpoint: str
 
 
 @router.get("/vapid-public-key")
@@ -20,29 +30,23 @@ def get_vapid_public_key(db: Session = Depends(get_db)):
 
 @router.post("/subscribe", status_code=201)
 def subscribe_push(
-    body: Dict[str, Any],
+    body: PushSubscribeBody,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    endpoint = body.get("endpoint")
-    p256dh = body.get("p256dh")
-    auth = body.get("auth")
-    if not endpoint or not p256dh or not auth:
-        raise HTTPException(status_code=400, detail="endpoint, p256dh, and auth are required")
-
-    existing = db.query(PushSubscription).filter_by(endpoint=endpoint).first()
+    existing = db.query(PushSubscription).filter_by(endpoint=body.endpoint).first()
     if existing:
-        existing.p256dh = p256dh
-        existing.auth = auth
+        existing.p256dh = body.p256dh
+        existing.auth = body.auth
         existing.user_id = current_user.id
         db.commit()
         return {"status": "updated"}
 
     sub = PushSubscription(
         user_id=current_user.id,
-        endpoint=endpoint,
-        p256dh=p256dh,
-        auth=auth,
+        endpoint=body.endpoint,
+        p256dh=body.p256dh,
+        auth=body.auth,
     )
     db.add(sub)
     db.commit()
@@ -51,17 +55,13 @@ def subscribe_push(
 
 @router.delete("/unsubscribe")
 def unsubscribe_push(
-    body: Dict[str, Any],
+    body: PushUnsubscribeBody,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    endpoint = body.get("endpoint")
-    if not endpoint:
-        raise HTTPException(status_code=400, detail="endpoint is required")
-
     deleted = (
         db.query(PushSubscription)
-        .filter_by(user_id=current_user.id, endpoint=endpoint)
+        .filter_by(user_id=current_user.id, endpoint=body.endpoint)
         .delete()
     )
     db.commit()

@@ -194,7 +194,8 @@ const settingsPage = (() => {
       updatePushUI(sub);
       toast.success('Push notifications enabled!');
     } catch (e) {
-      toast.error('Could not enable notifications: ' + (e.message || 'Permission denied'));
+      const msg = e?.message || e?.name || String(e) || 'Unknown error';
+      toast.error('Could not enable notifications: ' + msg);
     }
   }
 
