@@ -5,36 +5,38 @@ const toast = (() => {
   const container = () => document.getElementById('toast-container');
 
   function show(message, type = 'success', duration = 3500) {
-    const colors = {
-      success: 'bg-emerald-600',
-      error: 'bg-red-600',
-      warning: 'bg-amber-500',
-      info: 'bg-indigo-600',
+    const cfg = {
+      success: { bg: 'bg-emerald-600', icon: 'fa-circle-check' },
+      error:   { bg: 'bg-red-600',     icon: 'fa-circle-xmark' },
+      warning: { bg: 'bg-amber-500',   icon: 'fa-triangle-exclamation' },
+      info:    { bg: 'bg-indigo-600',  icon: 'fa-circle-info' },
     };
-    const icons = {
-      success: 'fa-circle-check',
-      error: 'fa-circle-xmark',
-      warning: 'fa-triangle-exclamation',
-      info: 'fa-circle-info',
-    };
+    const { bg, icon } = cfg[type] || cfg.info;
 
     const el = document.createElement('div');
-    el.className = `pointer-events-auto flex items-center gap-3 ${colors[type]} text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg toast-enter max-w-sm`;
-    el.innerHTML = `<i class="fa-solid ${icons[type]}"></i><span>${message}</span>`;
+    el.className = `pointer-events-auto flex items-center gap-3 ${bg} text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl toast-enter`;
+    el.style.cssText = 'min-width:220px;max-width:340px;';
+    el.innerHTML = `
+      <i class="fa-solid ${icon} flex-shrink-0"></i>
+      <span class="flex-1 leading-snug">${message}</span>
+      <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white ml-1 flex-shrink-0">
+        <i class="fa-solid fa-xmark text-xs"></i>
+      </button>`;
     container().appendChild(el);
 
     setTimeout(() => {
+      if (!el.parentElement) return;
       el.classList.remove('toast-enter');
       el.classList.add('toast-exit');
-      setTimeout(() => el.remove(), 300);
+      setTimeout(() => el.remove(), 250);
     }, duration);
   }
 
   return {
     success: (msg) => show(msg, 'success'),
-    error: (msg) => show(msg, 'error'),
+    error:   (msg) => show(msg, 'error'),
     warning: (msg) => show(msg, 'warning'),
-    info: (msg) => show(msg, 'info'),
+    info:    (msg) => show(msg, 'info'),
   };
 })();
 
@@ -42,12 +44,12 @@ const toast = (() => {
 const modal = (() => {
   let onConfirm = null;
 
-  function open({ title, body, footer, wide = false }) {
+  function open({ title, body, footer, wide = false, danger = false }) {
     document.getElementById('modal-title').textContent = title;
     document.getElementById('modal-body').innerHTML = body;
     document.getElementById('modal-footer').innerHTML = footer || '';
     const box = document.getElementById('modal-box');
-    box.className = `bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full ${wide ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col`;
+    box.className = `bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full ${wide ? 'sm:max-w-3xl' : 'sm:max-w-2xl'} max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col`;
     document.getElementById('modal-overlay').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
   }
@@ -66,8 +68,8 @@ const modal = (() => {
       title,
       body: `<p class="text-slate-600 text-sm leading-relaxed">${message}</p>`,
       footer: `
-        <button onclick="modal.close()" class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">Cancel</button>
-        <button onclick="modal._confirm()" class="px-5 py-2.5 text-sm font-semibold text-white ${danger ? 'bg-red-600 hover:bg-red-700' : 'bg-indigo-600 hover:bg-indigo-700'} rounded-lg transition-colors">${danger ? 'Delete' : 'Confirm'}</button>
+        <button onclick="modal.close()" class="btn-ghost">Cancel</button>
+        <button onclick="modal._confirm()" class="${danger ? 'btn-danger' : 'btn-primary'}">${danger ? 'Delete' : 'Confirm'}</button>
       `,
     });
   }
@@ -77,7 +79,7 @@ const modal = (() => {
     close();
   }
 
-  document.getElementById('modal-overlay')?.addEventListener('click', (e) => {
+  document.addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) close();
   });
 
@@ -95,8 +97,8 @@ function searchableSelect(label, name, currentValue, options, required = false) 
   const currentLabel = options.find(o => String(o.value) === String(currentValue))?.label || '';
   const id = `ss-${name}`;
   const optionsHtml = options.map(o => `
-    <div class="ss-option px-3 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer transition-colors rounded-lg"
-      data-value="${o.value}" data-label="${o.label.replace(/"/g, '&quot;')}"
+    <div class="ss-option"
+      data-value="${o.value}" data-label="${(o.label || '').replace(/"/g, '&quot;')}"
       onmousedown="searchableSelectPick('${id}', '${o.value}', this.dataset.label)">
       ${o.label}
     </div>
@@ -113,7 +115,7 @@ function searchableSelect(label, name, currentValue, options, required = false) 
           onblur="setTimeout(()=>searchableSelectClose('${id}'),200)" />
         <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
         <input type="hidden" name="${name}" id="${id}-val" value="${currentValue || ''}" />
-        <div id="${id}-drop" class="hidden absolute z-50 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-52 overflow-y-auto p-1">
+        <div id="${id}-drop" class="hidden ss-drop">
           ${optionsHtml}
         </div>
       </div>
@@ -131,7 +133,7 @@ function searchableSelectFilter(id, q) {
 }
 function searchableSelectOpen(id) {
   const drop = document.getElementById(`${id}-drop`);
-  if (drop) { searchableSelectFilter(id, document.getElementById(`${id}-txt`)?.value || ''); }
+  if (drop) searchableSelectFilter(id, document.getElementById(`${id}-txt`)?.value || '');
 }
 function searchableSelectClose(id) {
   document.getElementById(`${id}-drop`)?.classList.add('hidden');
@@ -147,13 +149,13 @@ function searchableSelectPick(id, value, label) {
 // ─── Pill Selector ────────────────────────────────────────────────────────────
 function pillSelect(label, name, currentValue, options) {
   const pills = options.map(o => {
-    const val = typeof o === 'object' ? o.value : o;
-    const lbl = typeof o === 'object' ? o.label : o;
-    const color = typeof o === 'object' && o.color ? o.color : 'bg-slate-100 text-slate-600';
+    const val    = typeof o === 'object' ? o.value  : o;
+    const lbl    = typeof o === 'object' ? o.label  : o;
+    const color  = typeof o === 'object' && o.color  ? o.color  : 'bg-slate-100 text-slate-600';
     const active = typeof o === 'object' && o.active ? o.active : 'bg-indigo-600 text-white';
     const isActive = String(currentValue) === String(val);
     return `<button type="button"
-      class="pill-btn px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${isActive ? active + ' border-transparent shadow-sm' : color + ' border-slate-200 hover:border-indigo-300'}"
+      class="pill-btn px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${isActive ? active + ' border-transparent shadow-sm' : color + ' border-slate-200 hover:border-indigo-300'}"
       data-name="${name}" data-val="${val}" data-active="${active}" data-inactive="${color}"
       onclick="pillSelectPick(this)">${lbl}</button>`;
   }).join('');
@@ -169,31 +171,31 @@ function pillSelectPick(btn) {
   const name = btn.dataset.name;
   document.getElementById(`ps-${name}`).value = btn.dataset.val;
   document.querySelectorAll(`[data-name="${name}"].pill-btn`).forEach(b => {
-    b.className = `pill-btn px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${b.dataset.inactive} border-slate-200 hover:border-indigo-300`;
+    b.className = `pill-btn px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${b.dataset.inactive} border-slate-200 hover:border-indigo-300`;
   });
-  btn.className = `pill-btn px-3 py-1.5 text-xs font-medium rounded-full border transition-all ${btn.dataset.active} border-transparent shadow-sm`;
+  btn.className = `pill-btn px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${btn.dataset.active} border-transparent shadow-sm`;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function statusBadge(stage, result) {
   const resultColors = {
-    Selected: 'bg-emerald-100 text-emerald-700',
-    Rejected: 'bg-red-100 text-red-700',
-    Withdrawn: 'bg-slate-100 text-slate-600',
+    Selected:       'bg-emerald-100 text-emerald-700',
+    Rejected:       'bg-red-100 text-red-700',
+    Withdrawn:      'bg-slate-100 text-slate-600',
     'Offer Declined': 'bg-orange-100 text-orange-700',
-    Pending: 'bg-indigo-100 text-indigo-700',
+    Pending:        'bg-indigo-100 text-indigo-700',
   };
   const stageColors = {
-    Applied: 'bg-blue-100 text-blue-700',
-    Shortlisted: 'bg-purple-100 text-purple-700',
-    'Phone Screen': 'bg-violet-100 text-violet-700',
-    'Technical Round': 'bg-indigo-100 text-indigo-700',
-    'HR Round': 'bg-pink-100 text-pink-700',
-    'Final Round': 'bg-orange-100 text-orange-700',
-    Offer: 'bg-amber-100 text-amber-700',
-    Accepted: 'bg-emerald-100 text-emerald-700',
-    Rejected: 'bg-red-100 text-red-700',
-    Withdrawn: 'bg-slate-100 text-slate-600',
+    Applied:          'bg-blue-100 text-blue-700',
+    Shortlisted:      'bg-purple-100 text-purple-700',
+    'Phone Screen':   'bg-violet-100 text-violet-700',
+    'Technical Round':'bg-indigo-100 text-indigo-700',
+    'HR Round':       'bg-pink-100 text-pink-700',
+    'Final Round':    'bg-orange-100 text-orange-700',
+    Offer:            'bg-amber-100 text-amber-700',
+    Accepted:         'bg-emerald-100 text-emerald-700',
+    Rejected:         'bg-red-100 text-red-700',
+    Withdrawn:        'bg-slate-100 text-slate-600',
   };
   if (result && result !== 'Pending') {
     return `<span class="badge ${resultColors[result] || 'bg-slate-100 text-slate-600'}">${result}</span>`;
@@ -237,7 +239,7 @@ function formatPay(min, max, currency = 'INR', type = 'Annual') {
   const fmt = (n) => {
     if (currency === 'INR') {
       if (n >= 100000) return `${(n / 100000).toFixed(1)}L`;
-      return `₹${n.toLocaleString()}`;
+      return `${n.toLocaleString()}`;
     }
     return `${n.toLocaleString()}`;
   };
@@ -261,10 +263,10 @@ function workModeChip(mode) {
 function roundResultBadge(result) {
   const map = {
     'Next Round': 'bg-indigo-100 text-indigo-700',
-    Selected: 'bg-emerald-100 text-emerald-700',
-    Rejected: 'bg-red-100 text-red-700',
-    Hold: 'bg-amber-100 text-amber-700',
-    Pending: 'bg-slate-100 text-slate-600',
+    Selected:     'bg-emerald-100 text-emerald-700',
+    Rejected:     'bg-red-100 text-red-700',
+    Hold:         'bg-amber-100 text-amber-700',
+    Pending:      'bg-slate-100 text-slate-600',
   };
   return `<span class="badge ${map[result] || 'bg-slate-100 text-slate-600'}">${result || 'Pending'}</span>`;
 }
@@ -280,20 +282,21 @@ function emptyState(icon, title, message, action = '') {
 }
 
 function btn(label, onclick, style = 'primary', icon = '') {
-  const styles = {
-    primary: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm',
-    secondary: 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300',
-    danger: 'bg-red-600 hover:bg-red-700 text-white',
-    ghost: 'hover:bg-slate-100 text-slate-600',
+  const cls = {
+    primary:   'btn-primary',
+    secondary: 'btn-secondary',
+    danger:    'btn-danger',
+    ghost:     'btn-ghost',
   };
-  return `<button onclick="${onclick}" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${styles[style]}">${icon ? `<i class="fa-solid ${icon}"></i>` : ''}${label}</button>`;
+  return `<button onclick="${onclick}" class="${cls[style] || 'btn-primary'}">${icon ? `<i class="fa-solid ${icon}"></i>` : ''}${label}</button>`;
 }
 
-// Form field builders
+// ─── Form field builders ──────────────────────────────────────────────────────
 function field(label, name, type = 'text', value = '', opts = {}) {
   const placeholder = opts.placeholder || '';
   const required = opts.required ? 'required' : '';
   const extraClass = opts.class || '';
+
   if (type === 'textarea') {
     return `<div class="form-group ${extraClass}">
       <label class="form-label">${label}${opts.required ? ' <span class="text-red-500">*</span>' : ''}</label>
