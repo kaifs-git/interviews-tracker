@@ -2,7 +2,7 @@
 (async () => {
   // Register service worker for PWA
   if ('serviceWorker' in navigator) {
-    const reg = await navigator.serviceWorker.register('/static/sw.js').catch(() => null);
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => null);
 
     // Handle navigation messages from push notification clicks
     if (reg) {

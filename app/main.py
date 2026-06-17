@@ -240,6 +240,16 @@ def _generate_icon_png(size: int) -> bytes:
     )
 
 
+@app.get("/sw.js")
+async def serve_sw():
+    sw_path = os.path.join(static_dir, "sw.js")
+    return FileResponse(
+        sw_path,
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/"},
+    )
+
+
 @app.get("/icon/{size}")
 async def app_icon(size: int):
     if size not in (72, 96, 128, 144, 152, 192, 384, 512):
