@@ -76,6 +76,8 @@ const api = (() => {
     getAdminSettings: () => request('GET', '/api/admin/settings'),
     updateAdminSettings: (data) => request('PUT', '/api/admin/settings', data),
     getAdminAgentStats: () => request('GET', '/api/admin/agent-stats'),
+    getAdminDiagnostics: () => request('GET', '/api/admin/diagnostics'),
+    runDebugSync: () => request('POST', '/api/admin/debug-sync'),
 
     // Email accounts
     getEmailAccounts: () => request('GET', '/api/email/accounts'),

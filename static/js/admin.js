@@ -21,8 +21,24 @@ const adminPage = (() => {
           class="admin-tab px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'settings' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}">
           <i class="fa-solid fa-sliders mr-2"></i>System Settings
         </button>
+        <button onclick="adminPage.switchTab('diagnostics')"
+          class="admin-tab px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'diagnostics' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}">
+          <i class="fa-solid fa-stethoscope mr-2"></i>Diagnostics
+        </button>
       </div>
     `;
+
+    if (activeTab === 'diagnostics') {
+      let diag = {};
+      try {
+        diag = await api.getAdminDiagnostics();
+      } catch (e) {
+        content.innerHTML = tabs + `<div class="text-center py-10 text-slate-500">Failed to load diagnostics.</div>`;
+        return;
+      }
+      content.innerHTML = tabs + renderDiagnostics(diag);
+      return;
+    }
 
     if (activeTab === 'settings') {
       let settings = {};
@@ -446,6 +462,138 @@ const adminPage = (() => {
     }
   }
 
+  function renderDiagnostics(d) {
+    const ai = d.ai || {};
+    const keyOk = ai.key_configured;
+    const googleOk = d.google_client_configured;
+    const accounts = d.email_accounts || [];
+    const logs = d.recent_activity || [];
+
+    const check = (ok, label) => `
+      <div class="flex items-center gap-2 text-sm py-1">
+        <i class="fa-solid ${ok ? 'fa-circle-check text-emerald-500' : 'fa-circle-xmark text-red-500'} w-4 text-center"></i>
+        <span class="${ok ? 'text-slate-700' : 'text-red-600 font-medium'}">${label}</span>
+      </div>`;
+
+    const actionIcon = {
+      create_application: '📋', update_application_status: '🔄',
+      create_interview_round: '📅', create_contact: '👤',
+      skipped: '⏭️', flagged: '⚠️', error: '❌',
+    };
+
+    const logRows = logs.length ? logs.map(l => `
+      <tr>
+        <td class="px-3 py-2 text-xs text-slate-400 whitespace-nowrap">${l.created_at ? l.created_at.replace('T',' ').slice(0,19) : '—'}</td>
+        <td class="px-3 py-2 text-xs text-slate-500">${l.username}</td>
+        <td class="px-3 py-2 text-xs">
+          <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold
+            ${l.status === 'error' ? 'bg-red-100 text-red-700' : l.action_type === 'skipped' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700'}">
+            ${actionIcon[l.action_type] || '•'} ${l.action_type}
+          </span>
+        </td>
+        <td class="px-3 py-2 text-xs text-slate-500 max-w-[180px] truncate" title="${(l.email_subject||'').replace(/"/g,'&quot;')}">${l.email_subject || '—'}</td>
+        <td class="px-3 py-2 text-xs text-slate-600 max-w-[200px]">${l.summary || '—'}</td>
+      </tr>
+    `).join('') : `<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400 text-sm">No activity yet — run a sync to see results here.</td></tr>`;
+
+    const accountRows = accounts.length ? accounts.map(a => `
+      <tr>
+        <td class="px-3 py-2 text-xs text-slate-700">${a.username}</td>
+        <td class="px-3 py-2 text-xs text-slate-600">${a.email_address}</td>
+        <td class="px-3 py-2 text-xs">
+          <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${a.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">
+            ${a.is_active ? 'Active' : 'Inactive'}
+          </span>
+        </td>
+        <td class="px-3 py-2 text-xs text-slate-400 whitespace-nowrap">${a.last_synced_at ? a.last_synced_at.replace('T',' ').slice(0,19) : 'Never'}</td>
+      </tr>
+    `).join('') : `<tr><td colspan="4" class="px-3 py-4 text-center text-slate-400 text-sm">No email accounts connected.</td></tr>`;
+
+    return `
+      <!-- Config health -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-slate-800 text-sm">Configuration Health</h3>
+          <span class="text-xs text-slate-400">Polling: every ${d.polling_interval_minutes} min</span>
+        </div>
+        ${check(keyOk, `AI API key for <strong>${ai.provider}</strong> — ${ai.key_preview} (model: ${ai.model})`)}
+        ${check(googleOk, 'Google OAuth Client ID configured')}
+        ${check(accounts.length > 0, `Email accounts connected (${accounts.length})`)}
+        ${!keyOk ? `<p class="mt-3 text-xs text-red-600 bg-red-50 rounded-xl p-3"><i class="fa-solid fa-triangle-exclamation mr-1"></i>
+          No API key set — go to <strong>System Settings</strong> and save your ${ai.provider} API key. Without it the agent skips all emails silently.</p>` : ''}
+      </div>
+
+      <!-- Email accounts -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden mb-5">
+        <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-semibold text-slate-800 text-sm">Connected Email Accounts</h3>
+          <button onclick="adminPage.runDebugSync()" id="debug-sync-btn"
+            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors">
+            <i class="fa-solid fa-rotate"></i> Run Sync Now (Debug)
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">User</th>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Email</th>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Status</th>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Last Synced</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">${accountRows}</tbody>
+          </table>
+        </div>
+        <div id="debug-sync-result" class="hidden px-5 py-3 border-t border-slate-100 bg-slate-50">
+          <pre id="debug-sync-output" class="text-xs text-slate-700 whitespace-pre-wrap font-mono"></pre>
+        </div>
+      </div>
+
+      <!-- Recent activity log -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-semibold text-slate-800 text-sm">Recent Agent Activity (All Users, Last 30)</h3>
+          <button onclick="adminPage.switchTab('diagnostics')" class="text-xs text-indigo-500 hover:underline">Refresh</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="bg-slate-50 border-b border-slate-100">
+              <tr>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Time</th>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">User</th>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Action</th>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Email Subject</th>
+                <th class="px-3 py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Summary / Error</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">${logRows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  async function runDebugSync() {
+    const btn = document.getElementById('debug-sync-btn');
+    const resultBox = document.getElementById('debug-sync-result');
+    const output = document.getElementById('debug-sync-output');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-rotate animate-spin"></i> Syncing…'; }
+    try {
+      const result = await api.runDebugSync();
+      if (resultBox) resultBox.classList.remove('hidden');
+      if (output) output.textContent = JSON.stringify(result, null, 2);
+      toast.success(`Sync complete — ${result.accounts?.length || 0} account(s) checked`);
+      // Refresh diagnostics after a short delay to pick up new activity log entries
+      setTimeout(() => adminPage.switchTab('diagnostics'), 1500);
+    } catch (e) {
+      if (resultBox) resultBox.classList.remove('hidden');
+      if (output) output.textContent = 'Error: ' + (e.message || e);
+      toast.error(e.message || 'Sync failed');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Run Sync Now (Debug)'; }
+    }
+  }
+
   async function refreshPendingBadge() {
     try {
       const data = await api.getPendingCount();
@@ -461,5 +609,5 @@ const adminPage = (() => {
     } catch (_) {}
   }
 
-  return { render, switchTab, selectProvider, saveSettings, approveUser, rejectUser, toggleActive, confirmDelete, deleteUser };
+  return { render, switchTab, selectProvider, saveSettings, approveUser, rejectUser, toggleActive, confirmDelete, deleteUser, runDebugSync };
 })();

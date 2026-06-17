@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List, Dict, Any
 from ..dependencies import get_db, get_current_user
 from .. import models, schemas
-from ..models import AgentActivityLog
-from ..services.settings_service import get_all_settings, set_setting
+from ..models import AgentActivityLog, EmailAccount
+from ..services.settings_service import get_all_settings, get_setting, set_setting
 from ..services.scheduler import update_scheduler_interval
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -189,3 +189,93 @@ def get_agent_stats(
         "errors": errors,
         "skipped": skipped,
     }
+
+
+# ── Diagnostics ────────────────────────────────────────────────────────────────
+
+@router.get("/diagnostics")
+def get_diagnostics(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    """Return diagnostic info: AI config, email accounts, recent activity log."""
+    provider = get_setting(db, "ai_provider") or "gemini"
+    key_map = {"gemini": "gemini_api_key", "anthropic": "anthropic_api_key", "openai": "openai_api_key"}
+    api_key = get_setting(db, key_map.get(provider, "gemini_api_key")) or ""
+
+    accounts = db.query(EmailAccount).all()
+    accounts_out = []
+    for a in accounts:
+        user = db.query(models.User).filter_by(id=a.user_id).first()
+        accounts_out.append({
+            "id": a.id,
+            "user_id": a.user_id,
+            "username": user.username if user else "?",
+            "email_address": a.email_address,
+            "provider": a.provider,
+            "is_active": a.is_active,
+            "last_synced_at": a.last_synced_at.isoformat() if a.last_synced_at else None,
+        })
+
+    recent_logs = (
+        db.query(AgentActivityLog)
+        .order_by(AgentActivityLog.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    logs_out = []
+    for log in recent_logs:
+        user = db.query(models.User).filter_by(id=log.user_id).first()
+        logs_out.append({
+            "id": log.id,
+            "username": user.username if user else "?",
+            "action_type": log.action_type,
+            "status": log.status,
+            "summary": log.summary,
+            "email_subject": log.email_subject,
+            "email_from": log.email_from,
+            "created_at": log.created_at.isoformat() if log.created_at else None,
+        })
+
+    return {
+        "ai": {
+            "provider": provider,
+            "model": get_setting(db, "ai_model") or f"default ({provider})",
+            "key_configured": bool(api_key),
+            "key_preview": ("***" + api_key[-4:]) if len(api_key) > 4 else ("set" if api_key else "NOT SET"),
+        },
+        "polling_interval_minutes": int(get_setting(db, "email_polling_interval_minutes") or 15),
+        "google_client_configured": bool(get_setting(db, "google_client_id")),
+        "email_accounts": accounts_out,
+        "recent_activity": logs_out,
+    }
+
+
+@router.post("/debug-sync")
+def debug_sync(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    """Run email sync for ALL users and return detailed per-account results."""
+    from ..models import EmailAccount
+    from ..services.scheduler import _sync_account, _get_interval
+
+    since_minutes = _get_interval(db)
+    accounts = db.query(EmailAccount).filter_by(is_active=True).all()
+
+    results = []
+    for account in accounts:
+        user = db.query(models.User).filter_by(id=account.user_id).first()
+        entry = {
+            "account": account.email_address,
+            "user": user.username if user else "?",
+            "since_minutes": since_minutes,
+        }
+        try:
+            r = _sync_account(db, account, since_minutes)
+            entry.update({"ok": True, **r})
+        except Exception as e:
+            entry.update({"ok": False, "error": str(e)})
+        results.append(entry)
+
+    return {"since_minutes": since_minutes, "accounts": results}
