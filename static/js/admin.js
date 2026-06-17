@@ -567,7 +567,13 @@ const adminPage = (() => {
       <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
           <h3 class="font-semibold text-slate-800 text-sm">Recent Agent Activity (All Users, Last 30)</h3>
-          <button onclick="adminPage.switchTab('diagnostics')" class="text-xs text-indigo-500 hover:underline">Refresh</button>
+          <div class="flex items-center gap-3">
+            <button onclick="adminPage.clearErrors()"
+              class="text-xs text-red-500 hover:underline font-medium">
+              Clear Errors & Retry
+            </button>
+            <button onclick="adminPage.switchTab('diagnostics')" class="text-xs text-indigo-500 hover:underline">Refresh</button>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left">
@@ -607,6 +613,16 @@ const adminPage = (() => {
     }
   }
 
+  async function clearErrors() {
+    try {
+      const r = await api.clearErrorLogs();
+      toast.success(`Cleared ${r.deleted} error entries — emails will be retried on next sync`);
+      adminPage.switchTab('diagnostics');
+    } catch (e) {
+      toast.error(e.message || 'Failed to clear errors');
+    }
+  }
+
   async function refreshPendingBadge() {
     try {
       const data = await api.getPendingCount();
@@ -622,5 +638,5 @@ const adminPage = (() => {
     } catch (_) {}
   }
 
-  return { render, switchTab, selectProvider, saveSettings, approveUser, rejectUser, toggleActive, confirmDelete, deleteUser, runDebugSync };
+  return { render, switchTab, selectProvider, saveSettings, approveUser, rejectUser, toggleActive, confirmDelete, deleteUser, runDebugSync, clearErrors };
 })();

@@ -78,6 +78,7 @@ const api = (() => {
     getAdminAgentStats: () => request('GET', '/api/admin/agent-stats'),
     getAdminDiagnostics: () => request('GET', '/api/admin/diagnostics'),
     runDebugSync: () => request('POST', '/api/admin/debug-sync'),
+    clearErrorLogs: () => request('DELETE', '/api/admin/clear-errors'),
 
     // Email accounts
     getEmailAccounts: () => request('GET', '/api/email/accounts'),

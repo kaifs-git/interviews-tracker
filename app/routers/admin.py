@@ -280,3 +280,14 @@ def debug_sync(
         results.append(entry)
 
     return {"since_minutes": since_minutes, "accounts": results}
+
+
+@router.delete("/clear-errors", status_code=200)
+def clear_error_logs(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    """Delete all error-status AgentActivityLog entries so they can be retried on next sync."""
+    deleted = db.query(AgentActivityLog).filter(AgentActivityLog.status == "error").delete()
+    db.commit()
+    return {"deleted": deleted}
