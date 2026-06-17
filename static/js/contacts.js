@@ -115,7 +115,11 @@ const contactsPage = (() => {
     `;
   }
 
-  function openAddModal(preselect = {}) {
+  async function openAddModal(preselect = {}) {
+    // Ensure companies are loaded — may be empty if contacts page was never visited
+    if (!companies.length) {
+      try { companies = await api.getCompanies(); } catch (_) {}
+    }
     modal.open({
       title: 'Add Contact',
       body: contactForm({}, preselect),
@@ -128,7 +132,11 @@ const contactsPage = (() => {
     });
   }
 
-  function openAddModalForApp(appId, companyId) {
+  async function openAddModalForApp(appId, companyId) {
+    // Ensure companies are loaded before opening modal
+    if (!companies.length) {
+      try { companies = await api.getCompanies(); } catch (_) {}
+    }
     openAddModal({ application_id: appId, company_id: companyId });
   }
 

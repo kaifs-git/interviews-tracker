@@ -209,7 +209,11 @@ const applicationsPage = (() => {
     `;
   }
 
-  function openAddModal() {
+  async function openAddModal() {
+    // Load companies if not already loaded (e.g. opened from dashboard shortcut)
+    if (!companies.length) {
+      try { companies = await api.getCompanies(); } catch (_) {}
+    }
     if (!companies.length) {
       modal.confirm({
         title: 'No Companies Yet',
@@ -235,6 +239,10 @@ const applicationsPage = (() => {
   async function openEditModal(id) {
     let a;
     try {
+      // Ensure companies are loaded (may be empty if opened from detail page)
+      if (!companies.length) {
+        companies = await api.getCompanies();
+      }
       a = await api.getApplication(id);
     } catch (e) {
       toast.error('Failed to load application');
@@ -282,8 +290,13 @@ const applicationsPage = (() => {
       const idx = applications.findIndex(a => a.id === id);
       if (idx !== -1) applications[idx] = updated;
       modal.close();
-      document.getElementById('page-content').innerHTML = renderList();
       toast.success('Application updated');
+      // If we're on the detail page, refresh it — don't replace with the list
+      if (router.getCurrentPage() === 'application-detail') {
+        applicationDetailPage.render({ id });
+      } else {
+        document.getElementById('page-content').innerHTML = renderList();
+      }
     } catch (e) {
       toast.error(e.message || 'Failed to update application');
     }

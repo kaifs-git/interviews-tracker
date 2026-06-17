@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -104,8 +105,8 @@ app.include_router(applications.router)
 app.include_router(interviews.router)
 app.include_router(contacts.router)
 
-# Serve static frontend
-static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+# Serve static frontend — use absolute path so it works both locally and on Vercel
+static_dir = str(Path(__file__).resolve().parent.parent / "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
