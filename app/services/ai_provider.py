@@ -103,7 +103,7 @@ TOOL_DEFINITIONS = [
 
 # Default models per provider (cheapest / free)
 DEFAULT_MODELS = {
-    "gemini":    "gemini-1.5-flash",
+    "gemini":    "gemini-2.0-flash",
     "anthropic": "claude-haiku-4-5",
     "openai":    "gpt-4o-mini",
 }
@@ -169,7 +169,7 @@ def _call_gemini(db: Session, system: str, user_message: str, model: str) -> lis
     if not api_key:
         raise ValueError("Gemini API key not configured")
 
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
     response = client.models.generate_content(
         model=model,
         contents=user_message,
