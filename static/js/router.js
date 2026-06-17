@@ -9,16 +9,27 @@ const router = (() => {
     companies: companiesPage,
     contacts: contactsPage,
     'application-detail': applicationDetailPage,
+    admin: adminPage,
   };
 
   function navigate(page, params = {}) {
     currentPage = page;
     currentParams = params;
 
-    // Update active nav
+    // Update sidebar nav active state
     document.querySelectorAll('.nav-link').forEach(el => {
       const elPage = el.dataset.page;
       if (elPage === page || (page === 'application-detail' && elPage === 'applications')) {
+        el.classList.add('active');
+      } else {
+        el.classList.remove('active');
+      }
+    });
+
+    // Update bottom nav active state
+    const bottomPage = page === 'application-detail' ? 'applications' : page;
+    document.querySelectorAll('.bottom-nav-btn').forEach(el => {
+      if (el.dataset.page === bottomPage) {
         el.classList.add('active');
       } else {
         el.classList.remove('active');

@@ -9,7 +9,7 @@ import os
 
 from .database import engine, Base, SessionLocal
 from . import models
-from .routers import auth, companies, applications, interviews, contacts
+from .routers import auth, companies, applications, interviews, contacts, admin
 from .config import settings
 from .auth import hash_password
 
@@ -28,6 +28,8 @@ def run_db_migrations():
         "username": "VARCHAR",
         "password_hash": "VARCHAR",
         "is_admin": "BOOLEAN DEFAULT 0" if is_sqlite else "BOOLEAN DEFAULT FALSE",
+        "is_approved": "BOOLEAN DEFAULT 1" if is_sqlite else "BOOLEAN DEFAULT TRUE",
+        # Default TRUE so existing users aren't locked out on upgrade
     }
 
     with engine.connect() as conn:
@@ -57,6 +59,7 @@ def ensure_admin():
             admin.password_hash = hash_password(settings.ADMIN_PASSWORD)
             admin.is_admin = True
             admin.is_active = True
+            admin.is_approved = True
             db.commit()
             print(f"✓ Admin user '{settings.ADMIN_USERNAME}' ready")
         else:
@@ -67,6 +70,7 @@ def ensure_admin():
                 password_hash=hash_password(settings.ADMIN_PASSWORD),
                 is_admin=True,
                 is_active=True,
+                is_approved=True,
             )
             db.add(admin)
             db.commit()
@@ -104,6 +108,68 @@ app.include_router(companies.router)
 app.include_router(applications.router)
 app.include_router(interviews.router)
 app.include_router(contacts.router)
+app.include_router(admin.router)
+
+import struct
+import zlib
+import math
+from fastapi import Response as FastAPIResponse
+
+
+def _generate_icon_png(size: int) -> bytes:
+    """Generate a simple indigo-circle PNG icon with a white briefcase."""
+    half = size / 2
+    circ_r = size * 0.46
+    bg = (99, 102, 241)   # indigo
+    fg = (255, 255, 255)  # white
+    out = (248, 250, 252) # slate-50
+
+    rows = []
+    for y in range(size):
+        row = bytearray([0])  # PNG filter: None
+        for x in range(size):
+            dx, dy = x - half, y - half
+            if math.sqrt(dx*dx + dy*dy) > circ_r:
+                row.extend(out)
+            else:
+                bx1, bx2 = size*0.22, size*0.78
+                by1, by2 = size*0.44, size*0.78
+                hx1, hx2 = size*0.36, size*0.64
+                hy1, hy2 = size*0.27, size*0.44
+                hxi1, hxi2 = size*0.43, size*0.57
+                hyi2 = size*0.44
+
+                in_body = bx1 <= x <= bx2 and by1 <= y <= by2
+                in_handle_o = hx1 <= x <= hx2 and hy1 <= y <= hy2
+                in_handle_i = hxi1 <= x <= hxi2 and hy1+size*0.04 <= y <= hyi2
+                in_handle = in_handle_o and not in_handle_i
+
+                row.extend(fg if (in_body or in_handle) else bg)
+        rows.append(bytes(row))
+
+    raw = b''.join(rows)
+    compressed = zlib.compress(raw, 6)
+
+    def png_chunk(name, data):
+        crc = zlib.crc32(name + data) & 0xffffffff
+        return struct.pack('>I', len(data)) + name + data + struct.pack('>I', crc)
+
+    return (
+        b'\x89PNG\r\n\x1a\n' +
+        png_chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0)) +
+        png_chunk(b'IDAT', compressed) +
+        png_chunk(b'IEND', b'')
+    )
+
+
+@app.get("/icon/{size}")
+async def app_icon(size: int):
+    if size not in (72, 96, 128, 144, 152, 192, 384, 512):
+        size = 192
+    png = _generate_icon_png(size)
+    return FastAPIResponse(content=png, media_type="image/png",
+                     headers={"Cache-Control": "public, max-age=86400"})
+
 
 # Serve static frontend — use absolute path so it works both locally and on Vercel
 static_dir = str(Path(__file__).resolve().parent.parent / "static")

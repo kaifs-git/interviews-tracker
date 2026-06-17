@@ -22,6 +22,7 @@ class User(Base):
     name = Column(String)
     picture = Column(String)
     is_active = Column(Boolean, default=True)
+    is_approved = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     companies = relationship("Company", back_populates="user", cascade="all, delete-orphan")
