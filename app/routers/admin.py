@@ -9,9 +9,9 @@ from ..services.scheduler import update_scheduler_interval
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
-SENSITIVE_KEYS = {"anthropic_api_key", "google_client_secret", "vapid_private_key"}
+SENSITIVE_KEYS = {"gemini_api_key", "google_client_secret", "vapid_private_key"}
 ALLOWED_SETTING_KEYS = {
-    "anthropic_api_key",
+    "gemini_api_key",
     "google_client_id",
     "google_client_secret",
     "google_redirect_uri",

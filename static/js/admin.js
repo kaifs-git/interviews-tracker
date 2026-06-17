@@ -289,18 +289,25 @@ const adminPage = (() => {
 
           <div class="form-section">AI Configuration</div>
           <div class="form-group">
-            <label class="form-label">Anthropic API Key <span class="text-red-500">*</span></label>
-            <input type="password" name="anthropic_api_key" class="form-input"
-              placeholder="${s.anthropic_api_key_set ? '••••••••••••••••••••••' : 'sk-ant-...'}"
+            <label class="form-label">
+              Gemini API Key <span class="text-red-500">*</span>
+              <span class="ml-2 badge bg-emerald-100 text-emerald-700 text-[10px]">Free</span>
+            </label>
+            <input type="password" name="gemini_api_key" class="form-input"
+              placeholder="${s.gemini_api_key ? '•••• already set ••••' : 'AIza...'}"
               autocomplete="off" />
-            <p class="text-xs text-slate-400 mt-1">Required for the AI email agent. Get one at console.anthropic.com</p>
+            <p class="text-xs text-slate-400 mt-1">
+              Free tier — get your key at
+              <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-500 underline">aistudio.google.com</a>.
+              No credit card required. 1,500 free requests/day.
+            </p>
           </div>
 
           <div class="form-section">Gmail OAuth</div>
           <div class="form-group">
             <label class="form-label">Google Client ID</label>
             <input type="text" name="google_client_id" class="form-input"
-              placeholder="${s.google_client_id_set ? '••• already set •••' : '123456789.apps.googleusercontent.com'}" />
+              placeholder="${s.google_client_id ? '•••• already set ••••' : '123456789.apps.googleusercontent.com'}" />
           </div>
           <div class="form-group">
             <label class="form-label">Google Client Secret</label>
@@ -323,7 +330,7 @@ const adminPage = (() => {
               placeholder="admin@yourdomain.com" />
             <p class="text-xs text-slate-400 mt-1">Contact email for VAPID push notifications (required by spec).</p>
           </div>
-          ${s.vapid_public_key_set ? `
+          ${s.vapid_public_key ? `
             <div class="p-3 bg-emerald-50 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
               <i class="fa-solid fa-circle-check"></i> VAPID keys are generated and ready.
             </div>
