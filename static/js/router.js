@@ -10,6 +10,8 @@ const router = (() => {
     contacts: contactsPage,
     'application-detail': applicationDetailPage,
     admin: adminPage,
+    settings: settingsPage,
+    agent: agentPage,
   };
 
   function navigate(page, params = {}) {
@@ -27,7 +29,8 @@ const router = (() => {
     });
 
     // Update bottom nav active state
-    const bottomPage = page === 'application-detail' ? 'applications' : page;
+    const bottomAliases = { 'application-detail': 'applications', 'agent': 'settings' };
+    const bottomPage = bottomAliases[page] || page;
     document.querySelectorAll('.bottom-nav-btn').forEach(el => {
       if (el.dataset.page === bottomPage) {
         el.classList.add('active');

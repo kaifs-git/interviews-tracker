@@ -29,6 +29,7 @@ class User(Base):
     applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
     contacts = relationship("Contact", back_populates="user", cascade="all, delete-orphan")
     interview_rounds = relationship("InterviewRound", back_populates="user", cascade="all, delete-orphan")
+    email_accounts = relationship("EmailAccount", back_populates="user", cascade="all, delete-orphan")
 
 
 class Company(Base):
@@ -85,6 +86,8 @@ class JobApplication(Base):
 
     priority = Column(String, default="Medium")
     notes = Column(Text)
+
+    source_email_message_id = Column(String, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -153,8 +156,65 @@ class InterviewRound(Base):
 
     result = Column(String, default="Pending")
 
+    source_email_message_id = Column(String, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="interview_rounds")
     application = relationship("JobApplication", back_populates="interview_rounds")
+
+
+class SystemSettings(Base):
+    __tablename__ = "system_settings"
+    id = Column(Integer, primary_key=True)
+    key = Column(String, unique=True, nullable=False)
+    value = Column(Text)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class EmailAccount(Base):
+    __tablename__ = "email_accounts"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    provider = Column(String, nullable=False)  # "gmail"
+    email_address = Column(String, nullable=False)
+    access_token = Column(Text)
+    refresh_token = Column(Text)
+    token_expiry = Column(DateTime)
+    last_synced_at = Column(DateTime)
+    history_id = Column(String)  # Gmail history ID for incremental sync
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="email_accounts")
+
+
+class AgentActivityLog(Base):
+    __tablename__ = "agent_activity_logs"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    email_account_id = Column(Integer, ForeignKey("email_accounts.id"), nullable=True)
+    email_message_id = Column(String)  # Gmail message ID for deduplication
+    email_subject = Column(String)
+    email_from = Column(String)
+    email_date = Column(DateTime)
+    action_type = Column(String)  # "create_application", "update_status", "create_interview", "create_contact", "skipped", "flagged"
+    entity_type = Column(String)  # "application", "interview", "contact"
+    entity_id = Column(Integer)
+    confidence = Column(String)  # "high", "medium", "low"
+    summary = Column(Text)  # human-readable description of what was done
+    raw_agent_response = Column(Text)
+    status = Column(String, default="done")  # "done", "undone", "flagged"
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    endpoint = Column(Text, nullable=False, unique=True)
+    p256dh = Column(Text, nullable=False)
+    auth = Column(Text, nullable=False)
+    user_agent = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)

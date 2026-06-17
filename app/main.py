@@ -10,6 +10,7 @@ import os
 from .database import engine, Base, SessionLocal
 from . import models
 from .routers import auth, companies, applications, interviews, contacts, admin
+from .routers.email_agent import router as email_router
 from .config import settings
 from .auth import hash_password
 
@@ -45,6 +46,28 @@ def run_db_migrations():
         # Make email nullable if it isn't already (SQLite doesn't support this,
         # but it was defined NOT NULL before — existing rows are fine as-is)
 
+        # Migrate source_email_message_id into job_applications
+        if "job_applications" in inspector.get_table_names():
+            app_cols = {c["name"] for c in inspector.get_columns("job_applications")}
+            if "source_email_message_id" not in app_cols:
+                try:
+                    conn.execute(text("ALTER TABLE job_applications ADD COLUMN source_email_message_id VARCHAR"))
+                    conn.commit()
+                    print("  ✓ Added column job_applications.source_email_message_id")
+                except Exception as e:
+                    print(f"  ! Could not add job_applications.source_email_message_id: {e}")
+
+        # Migrate source_email_message_id into interview_rounds
+        if "interview_rounds" in inspector.get_table_names():
+            ir_cols = {c["name"] for c in inspector.get_columns("interview_rounds")}
+            if "source_email_message_id" not in ir_cols:
+                try:
+                    conn.execute(text("ALTER TABLE interview_rounds ADD COLUMN source_email_message_id VARCHAR"))
+                    conn.commit()
+                    print("  ✓ Added column interview_rounds.source_email_message_id")
+                except Exception as e:
+                    print(f"  ! Could not add interview_rounds.source_email_message_id: {e}")
+
 
 def ensure_admin():
     """Create or update the admin user from env settings."""
@@ -79,12 +102,64 @@ def ensure_admin():
         db.close()
 
 
+def _ensure_vapid_keys():
+    """Generate VAPID keys if not already present in SystemSettings."""
+    from .services.settings_service import get_setting, set_setting
+    db = SessionLocal()
+    try:
+        existing_pub = get_setting(db, "vapid_public_key")
+        existing_priv = get_setting(db, "vapid_private_key")
+        if existing_pub and existing_priv:
+            return
+        try:
+            from py_vapid import Vapid
+            v = Vapid()
+            v.generate_keys()
+            # py_vapid stores keys as PEM; export as base64url for webpush
+            import base64
+            pub_raw = v.public_key.public_bytes(
+                __import__("cryptography.hazmat.primitives.serialization", fromlist=["Encoding", "PublicFormat"]).Encoding.X962,
+                __import__("cryptography.hazmat.primitives.serialization", fromlist=["Encoding", "PublicFormat"]).PublicFormat.UncompressedPoint,
+            )
+            priv_raw = v.private_key.private_bytes(
+                __import__("cryptography.hazmat.primitives.serialization", fromlist=["Encoding", "PrivateFormat", "NoEncryption"]).Encoding.PEM,
+                __import__("cryptography.hazmat.primitives.serialization", fromlist=["Encoding", "PrivateFormat", "NoEncryption"]).PrivateFormat.TraditionalOpenSSL,
+                __import__("cryptography.hazmat.primitives.serialization", fromlist=["Encoding", "PrivateFormat", "NoEncryption"]).NoEncryption(),
+            )
+            pub_b64 = base64.urlsafe_b64encode(pub_raw).rstrip(b"=").decode()
+            priv_pem = priv_raw.decode()
+            set_setting(db, "vapid_public_key", pub_b64)
+            set_setting(db, "vapid_private_key", priv_pem)
+            print("  ✓ VAPID keys generated")
+        except Exception as e:
+            print(f"  ! Could not generate VAPID keys: {e}")
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Run migrations then create admin
+    # Run migrations then create tables and admin
     run_db_migrations()
     Base.metadata.create_all(bind=engine)
     ensure_admin()
+    _ensure_vapid_keys()
+
+    # Start background scheduler only when not running on Vercel (serverless)
+    if os.environ.get("VERCEL") != "1":
+        from .services.settings_service import get_setting
+        from .services.scheduler import start_scheduler
+        db = SessionLocal()
+        try:
+            interval_str = get_setting(db, "email_polling_interval_minutes", "15")
+            try:
+                interval_minutes = int(interval_str)
+            except (ValueError, TypeError):
+                interval_minutes = 15
+        finally:
+            db.close()
+        start_scheduler(interval_minutes)
+
     yield
 
 
@@ -109,6 +184,7 @@ app.include_router(applications.router)
 app.include_router(interviews.router)
 app.include_router(contacts.router)
 app.include_router(admin.router)
+app.include_router(email_router)
 
 import struct
 import zlib

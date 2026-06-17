@@ -1,4 +1,4 @@
-const CACHE = 'interviews-tracker-v1';
+const CACHE = 'interviews-tracker-v2';
 const STATIC_ASSETS = [
   '/',
   '/static/app.css',
@@ -11,6 +11,8 @@ const STATIC_ASSETS = [
   '/static/js/interviews.js',
   '/static/js/contacts.js',
   '/static/js/admin.js',
+  '/static/js/settings.js',
+  '/static/js/agent.js',
   '/static/js/router.js',
   '/static/js/main.js',
 ];
@@ -53,6 +55,43 @@ self.addEventListener('fetch', e => {
         }
         return res;
       });
+    })
+  );
+});
+
+// ─── Push Notifications ───────────────────────────────────────────────────────
+self.addEventListener('push', e => {
+  let data = { title: 'InterviewsTracker', body: 'New activity from your agent', url: '/' };
+  try {
+    if (e.data) data = { ...data, ...JSON.parse(e.data.text()) };
+  } catch (_) {}
+
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icon/192',
+      badge: '/icon/72',
+      tag: 'agent-activity',
+      renotify: true,
+      data: { url: data.url },
+      vibrate: [200, 100, 200],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.focus();
+          client.postMessage({ type: 'NAVIGATE', url });
+          return;
+        }
+      }
+      if (clients.openWindow) return clients.openWindow(url);
     })
   );
 });

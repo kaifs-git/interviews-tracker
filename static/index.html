@@ -188,6 +188,10 @@
         <i class="fa-solid fa-address-book w-4 text-center text-sm"></i>
         Contacts
       </button>
+      <button onclick="navTo('settings')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/8 transition-all text-sm font-medium" data-page="settings">
+        <i class="fa-solid fa-robot w-4 text-center text-sm"></i>
+        Email Agent
+      </button>
       <li id="admin-nav-item" class="hidden list-none">
         <button onclick="navTo('admin')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/8 transition-all text-sm font-medium" data-page="admin">
           <i class="fa-solid fa-shield-halved w-4 text-center text-sm text-amber-400"></i>
@@ -266,9 +270,9 @@
       <i class="fa-solid fa-address-book text-lg"></i>
       <span class="text-[10px] font-medium leading-none">Contacts</span>
     </button>
-    <button onclick="openSidebar()" class="bottom-nav-btn flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 text-slate-400 transition-colors min-w-[56px]">
-      <i class="fa-solid fa-ellipsis text-lg"></i>
-      <span class="text-[10px] font-medium leading-none">More</span>
+    <button onclick="navTo('settings')" class="bottom-nav-btn flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 text-slate-400 transition-colors min-w-[56px]" data-page="settings">
+      <i class="fa-solid fa-robot text-lg"></i>
+      <span class="text-[10px] font-medium leading-none">Agent</span>
     </button>
   </div>
 </nav>
@@ -311,6 +315,8 @@
 <script src="/static/js/interviews.js"></script>
 <script src="/static/js/contacts.js"></script>
 <script src="/static/js/admin.js"></script>
+<script src="/static/js/settings.js"></script>
+<script src="/static/js/agent.js"></script>
 <script src="/static/js/router.js"></script>
 <script src="/static/js/main.js"></script>
 
