@@ -114,7 +114,7 @@ def gmail_auth_redirect(
         url = get_gmail_auth_url(db, state=state)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"url": url}
+    return {"auth_url": url}
 
 
 @router.get("/api/email/callback/gmail")
@@ -168,7 +168,7 @@ def gmail_oauth_callback(
         db.add(account)
 
     db.commit()
-    return RedirectResponse(url="/#settings")
+    return RedirectResponse(url="/?page=settings&gmail=connected", status_code=302)
 
 
 # ── Manual sync ────────────────────────────────────────────────────────────────

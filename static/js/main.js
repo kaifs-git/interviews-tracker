@@ -17,7 +17,17 @@
 
   const loggedIn = await auth.init();
   if (loggedIn) {
-    router.navigate('dashboard');
+    // Check if redirected back from Gmail OAuth callback
+    const params = new URLSearchParams(window.location.search);
+    const startPage = params.get('page') || 'dashboard';
+    const gmailConnected = params.get('gmail') === 'connected';
+
+    router.navigate(startPage);
+    if (gmailConnected) {
+      // Clean URL then show success
+      window.history.replaceState({}, '', '/');
+      setTimeout(() => toast.success('Gmail account connected! You can now sync your inbox.'), 500);
+    }
 
     const user = auth.getUser();
     if (user && user.is_admin) {
