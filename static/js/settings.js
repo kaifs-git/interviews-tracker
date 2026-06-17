@@ -194,8 +194,22 @@ const settingsPage = (() => {
       });
 
       const endpoint = sub.endpoint;
-      const p256dh = arrayBufferToBase64Url(sub.getKey('p256dh'));
-      const auth   = arrayBufferToBase64Url(sub.getKey('auth'));
+      const subJson  = sub.toJSON ? sub.toJSON() : {};
+      let p256dh = subJson.keys?.p256dh;
+      let auth   = subJson.keys?.auth;
+
+      // Fallback: extract from ArrayBuffer via getKey()
+      if (!p256dh && sub.getKey) {
+        try { const b = sub.getKey('p256dh'); if (b) p256dh = arrayBufferToBase64Url(b); } catch (_) {}
+      }
+      if (!auth && sub.getKey) {
+        try { const b = sub.getKey('auth'); if (b) auth = arrayBufferToBase64Url(b); } catch (_) {}
+      }
+
+      if (!endpoint || !p256dh || !auth) {
+        toast.error('Could not read subscription keys — try clearing site data and retry.');
+        return;
+      }
 
       await api.subscribePush({ endpoint, p256dh, auth });
       updatePushUI(sub);
