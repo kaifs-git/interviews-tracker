@@ -193,31 +193,9 @@ const settingsPage = (() => {
         applicationServerKey: urlBase64ToUint8Array(public_key),
       });
 
-      const endpoint = sub.endpoint;
-      const subJson  = sub.toJSON ? sub.toJSON() : {};
-      let p256dh = subJson.keys?.p256dh;
-      let auth   = subJson.keys?.auth;
-
-      // Fallback: extract from ArrayBuffer via getKey()
-      if (!p256dh && sub.getKey) {
-        try { const b = sub.getKey('p256dh'); if (b) p256dh = arrayBufferToBase64Url(b); } catch (_) {}
-      }
-      if (!auth && sub.getKey) {
-        try { const b = sub.getKey('auth'); if (b) auth = arrayBufferToBase64Url(b); } catch (_) {}
-      }
-
-      // DEBUG: show extracted values
-      toast.info(
-        `DBG ep=${!!endpoint} p256dh=${p256dh ? p256dh.length+'ch' : 'MISS'} auth=${auth ? auth.length+'ch' : 'MISS'} getKey=${typeof sub.getKey}`,
-        15000
-      );
-
-      if (!endpoint || !p256dh || !auth) {
-        toast.error('Could not read subscription keys — try clearing site data and retry.');
-        return;
-      }
-
-      await api.subscribePush({ endpoint, p256dh, auth });
+      // Send the full sub.toJSON() — backend accepts both flat and nested keys format
+      const subJson = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint };
+      await api.subscribePush(subJson);
       updatePushUI(sub);
       toast.success('Push notifications enabled!');
     } catch (e) {

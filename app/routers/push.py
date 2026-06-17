@@ -29,14 +29,16 @@ async def subscribe_push(
         raise HTTPException(status_code=400, detail=f"Invalid JSON body: {e}")
 
     endpoint = body.get("endpoint")
-    p256dh   = body.get("p256dh")
-    auth     = body.get("auth")
+    # Accept both flat {p256dh, auth} and nested {keys: {p256dh, auth}} (sub.toJSON() format)
+    keys     = body.get("keys") or {}
+    p256dh   = body.get("p256dh") or keys.get("p256dh")
+    auth     = body.get("auth")   or keys.get("auth")
 
     missing = [f for f, v in [("endpoint", endpoint), ("p256dh", p256dh), ("auth", auth)] if not v]
     if missing:
         raise HTTPException(
             status_code=400,
-            detail=f"Missing fields: {', '.join(missing)}. Got keys: {list(body.keys())}",
+            detail=f"Missing fields: {', '.join(missing)}. Received keys: {list(body.keys())}",
         )
 
     existing = db.query(PushSubscription).filter_by(endpoint=endpoint).first()

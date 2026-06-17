@@ -7,6 +7,9 @@
     // Handle navigation messages from push notification clicks
     if (reg) {
       navigator.serviceWorker.addEventListener('message', e => {
+        if (e.data?.type === 'SW_UPDATED') {
+          window.location.reload();
+        }
         if (e.data?.type === 'NAVIGATE' && e.data.url) {
           const path = e.data.url.replace(/^.*#/, '');
           if (path && router) router.navigate(path);

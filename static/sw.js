@@ -1,4 +1,4 @@
-const CACHE = 'interviews-tracker-v6';
+const CACHE = 'interviews-tracker-v7';
 const STATIC_ASSETS = [
   '/',
   '/static/app.css',
@@ -20,7 +20,8 @@ const STATIC_ASSETS = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(STATIC_ASSETS))
+      // cache: 'reload' bypasses any other SW cache, always fetches fresh from network
+      .then(c => Promise.all(STATIC_ASSETS.map(url => fetch(new Request(url, { cache: 'reload' })).then(res => c.put(url, res)))))
       .then(() => self.skipWaiting())
   );
 });
@@ -30,6 +31,9 @@ self.addEventListener('activate', e => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }).then(clients =>
+        clients.forEach(c => c.postMessage({ type: 'SW_UPDATED' }))
+      ))
   );
 });
 
