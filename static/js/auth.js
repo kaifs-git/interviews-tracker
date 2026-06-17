@@ -58,6 +58,7 @@ const auth = (() => {
   function showTab(tab) {
     activeTab = tab;
     clearError();
+    clearSuccess();
 
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
@@ -81,8 +82,9 @@ const auth = (() => {
     }
   }
 
-  // ─── Error display ──────────────────────────────────────────────────────────
+  // ─── Error / success display ────────────────────────────────────────────────
   function showError(msg) {
+    clearSuccess();
     const el = document.getElementById('auth-error');
     const msgEl = document.getElementById('auth-error-msg');
     if (el && msgEl) {
@@ -92,6 +94,18 @@ const auth = (() => {
   }
   function clearError() {
     document.getElementById('auth-error')?.classList.add('hidden');
+  }
+  function showSuccess(msg) {
+    clearError();
+    const el = document.getElementById('auth-success');
+    const msgEl = document.getElementById('auth-success-msg');
+    if (el && msgEl) {
+      msgEl.textContent = msg;
+      el.classList.remove('hidden');
+    }
+  }
+  function clearSuccess() {
+    document.getElementById('auth-success')?.classList.add('hidden');
   }
 
   // ─── Password visibility toggle ─────────────────────────────────────────────
@@ -167,6 +181,11 @@ const auth = (() => {
       });
       const data = await res.json();
       if (!res.ok) { showError(data.detail || 'Registration failed'); return; }
+      if (data.pending) {
+        showTab('login');
+        showSuccess('Registration successful! Your account is pending admin approval. You can sign in once approved.');
+        return;
+      }
       setToken(data.access_token);
       currentUser = data.user;
       updateUserUI(currentUser);
@@ -228,7 +247,7 @@ const auth = (() => {
       email.textContent = user.email || (user.username ? `@${user.username}` : '');
     }
 
-    // Show admin badge in sidebar if admin
+    // Show admin badge + admin nav item if admin
     if (user.is_admin) {
       const nameEl = document.getElementById('user-name');
       if (nameEl && !nameEl.querySelector('.admin-badge')) {
@@ -237,6 +256,7 @@ const auth = (() => {
         badge.textContent = 'Admin';
         nameEl.appendChild(badge);
       }
+      document.getElementById('admin-nav-item')?.classList.remove('hidden');
     }
   }
 
@@ -244,11 +264,13 @@ const auth = (() => {
   function showLoginPage() {
     document.getElementById('login-page').classList.remove('hidden');
     document.getElementById('app-shell').classList.add('hidden');
+    document.getElementById('bottom-nav')?.classList.add('hidden');
   }
 
   function showApp() {
     document.getElementById('login-page').classList.add('hidden');
     document.getElementById('app-shell').classList.remove('hidden');
+    document.getElementById('bottom-nav')?.classList.remove('hidden');
   }
 
   function logout() {

@@ -65,5 +65,13 @@ const api = (() => {
     createContact: (data) => request('POST', '/api/contacts', data),
     updateContact: (id, data) => request('PUT', `/api/contacts/${id}`, data),
     deleteContact: (id) => request('DELETE', `/api/contacts/${id}`),
+
+    // Admin
+    getAdminUsers: () => request('GET', '/api/admin/users'),
+    getPendingCount: () => request('GET', '/api/admin/users/pending/count'),
+    approveUser: (id) => request('POST', `/api/admin/users/${id}/approve`),
+    rejectUser: (id) => request('POST', `/api/admin/users/${id}/reject`),
+    toggleUserActive: (id) => request('POST', `/api/admin/users/${id}/toggle-active`),
+    deleteAdminUser: (id) => request('DELETE', `/api/admin/users/${id}`),
   };
 })();

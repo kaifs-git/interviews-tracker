@@ -22,6 +22,20 @@ class UserOut(UserBase):
         from_attributes = True
 
 
+class UserAdmin(BaseModel):
+    id: int
+    username: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+    is_admin: bool = False
+    is_active: bool
+    is_approved: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # ─── Auth request/response schemas ───────────────────────────────────────────
 
 class LoginRequest(BaseModel):

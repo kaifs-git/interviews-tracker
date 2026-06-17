@@ -36,6 +36,8 @@ async def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     if not verify_password(user.password_hash, payload.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
+    if not user.is_approved:
+        raise HTTPException(status_code=403, detail="Your account is pending admin approval. Please wait for an admin to approve your registration.")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled. Contact admin.")
 
@@ -70,13 +72,18 @@ async def register(payload: schemas.RegisterRequest, db: Session = Depends(get_d
         name=payload.name or payload.username,
         email=payload.email or None,
         is_admin=False,
+        is_approved=False,  # requires admin approval
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    token = create_access_token({"sub": str(user.id)})
-    return {"access_token": token, "token_type": "bearer", "user": schemas.UserOut.model_validate(user)}
+    # Do NOT log them in yet — they need admin approval
+    return {
+        "message": "Registration successful. Your account is pending admin approval.",
+        "pending": True,
+        "username": user.username,
+    }
 
 
 # ─── Google OAuth ─────────────────────────────────────────────────────────────
