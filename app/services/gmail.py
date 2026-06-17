@@ -107,15 +107,17 @@ def _get_email_from_credentials(credentials) -> str:
         return ""
 
 
-def refresh_access_token(refresh_token: str) -> dict:
-    """Refresh an access token using a refresh token."""
+def refresh_access_token(refresh_token: str, client_id: str = None, client_secret: str = None) -> dict:
+    """Refresh an access token using a refresh token + client credentials."""
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
 
     creds = Credentials(
         token=None,
         refresh_token=refresh_token,
-        token_uri="https://oauth2.googleapis.com/token",
+        token_uri=_GOOGLE_TOKEN_URL,
+        client_id=client_id,
+        client_secret=client_secret,
     )
     creds.refresh(Request())
 
@@ -129,9 +131,9 @@ def refresh_access_token(refresh_token: str) -> dict:
     }
 
 
-def refresh_access_token_if_needed(refresh_token: str) -> dict:
+def refresh_access_token_if_needed(refresh_token: str, client_id: str = None, client_secret: str = None) -> dict:
     """Alias used by the scheduler."""
-    return refresh_access_token(refresh_token)
+    return refresh_access_token(refresh_token, client_id=client_id, client_secret=client_secret)
 
 
 def _strip_html(html: str) -> str:

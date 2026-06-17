@@ -41,7 +41,13 @@ def _sync_account(db: Session, account: EmailAccount, since_minutes: int) -> dic
     """Fetch emails from the last `since_minutes` minutes and process new ones."""
     # Refresh token if close to expiry
     if account.token_expiry and account.token_expiry < datetime.utcnow() + timedelta(minutes=5):
-        tokens = refresh_access_token_if_needed(account.refresh_token)
+        client_id = get_setting(db, "google_client_id")
+        client_secret = get_setting(db, "google_client_secret")
+        tokens = refresh_access_token_if_needed(
+            account.refresh_token,
+            client_id=client_id,
+            client_secret=client_secret,
+        )
         account.access_token = tokens["access_token"]
         account.token_expiry = tokens["expiry"]
         db.commit()
