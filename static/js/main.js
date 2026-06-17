@@ -24,6 +24,9 @@
     if (gmailConnected) {
       window.history.replaceState({}, '', '/');
       setTimeout(() => toast.success('Gmail account connected! You can now sync your inbox.'), 500);
+    } else if (params.get('gmail') === 'cancelled') {
+      window.history.replaceState({}, '', '/');
+      setTimeout(() => toast.error('Gmail connection cancelled.'), 500);
     }
 
     const user = auth.getUser();

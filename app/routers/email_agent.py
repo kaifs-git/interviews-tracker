@@ -119,14 +119,19 @@ def gmail_auth_redirect(
 
 @router.get("/api/email/callback/gmail")
 def gmail_oauth_callback(
-    code: str,
     state: str,
+    code: str = None,
+    error: str = None,
     db: Session = Depends(get_db),
 ):
     """
     OAuth callback endpoint. Exchanges the auth code for tokens and saves the
-    EmailAccount record, then redirects the browser to /#settings.
+    EmailAccount record, then redirects the browser to the settings page.
+    Handles cancellation gracefully when Google returns error instead of code.
     """
+    if error or not code:
+        return RedirectResponse(url="/?page=settings&gmail=cancelled", status_code=302)
+
     try:
         user_id = int(state)
     except (ValueError, TypeError):
