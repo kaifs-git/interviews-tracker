@@ -453,7 +453,10 @@ const adminPage = (() => {
     const form = e.target;
     const data = {};
     form.querySelectorAll('input[name], select[name], textarea[name]').forEach(el => {
-      if (el.value.trim() && !el.value.includes('•')) {
+      if (el.type === 'hidden') {
+        // Always include hidden fields (e.g. ai_provider)
+        if (el.value.trim()) data[el.name] = el.value.trim();
+      } else if (el.value.trim() && !el.value.includes('•')) {
         data[el.name] = el.name.includes('minutes') ? parseInt(el.value) : el.value.trim();
       }
     });

@@ -38,13 +38,17 @@ def process_email_for_user(
     email: dict,
 ) -> "AgentActivityLog | None":
     """Run the Gemini agent on a single email and persist results."""
-    # Dedup — skip if already successfully processed (don't skip error entries so they get retried)
-    if db.query(AgentActivityLog).filter(
+    # Dedup — skip if already successfully processed
+    # Allow retrying errors but cap at 3 attempts to avoid infinite loops
+    existing = db.query(AgentActivityLog).filter(
         AgentActivityLog.user_id == user_id,
         AgentActivityLog.email_message_id == email["message_id"],
-        AgentActivityLog.status != "error",
-    ).first():
-        return None
+    ).all()
+    if existing:
+        if any(e.status != "error" for e in existing):
+            return None  # already processed successfully
+        if len(existing) >= 3:
+            return None  # too many failed attempts, give up
 
     # Check that some provider key is configured
     provider = get_setting(db, "ai_provider") or "gemini"
