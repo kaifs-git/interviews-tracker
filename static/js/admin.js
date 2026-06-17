@@ -311,6 +311,7 @@ const adminPage = (() => {
             <div class="flex flex-wrap gap-2" id="provider-pills">
               ${[
                 { value: 'gemini',    label: 'Gemini',    badge: 'Free',   badgeCls: 'bg-emerald-100 text-emerald-700' },
+                { value: 'grok',      label: 'Grok',      badge: 'xAI',    badgeCls: 'bg-sky-100 text-sky-700' },
                 { value: 'anthropic', label: 'Anthropic', badge: 'Paid',   badgeCls: 'bg-amber-100 text-amber-700' },
                 { value: 'openai',    label: 'OpenAI',    badge: 'Paid',   badgeCls: 'bg-violet-100 text-violet-700' },
               ].map(p => {
@@ -325,42 +326,51 @@ const adminPage = (() => {
                 </button>`;
               }).join('')}
             </div>
-            <input type="hidden" name="ai_provider" id="ai_provider_input" value="${s.ai_provider || 'gemini'}" />
+            <input type="hidden" name="ai_provider" id="ai_provider_input" value="${s.ai_provider || 'grok'}" />
           </div>
 
           <!-- Per-provider key fields -->
-          <div id="provider-gemini-fields" class="${(s.ai_provider||'gemini') !== 'gemini' ? 'hidden' : ''}">
+          <div id="provider-grok-fields" class="${(s.ai_provider||'grok') !== 'grok' ? 'hidden' : ''}">
+            <div class="form-group">
+              <label class="form-label">Grok API Key</label>
+              <input type="password" name="grok_api_key" class="form-input"
+                placeholder="${s.grok_api_key ? '•••• already set ••••' : 'xai-...'}" autocomplete="off" />
+              <p class="text-xs text-slate-400 mt-1">
+                Get your key at <a href="https://console.x.ai" target="_blank" class="text-indigo-500 underline">console.x.ai</a>.
+                Default model: <code>grok-3-mini</code>.
+              </p>
+            </div>
+          </div>
+
+          <div id="provider-gemini-fields" class="${(s.ai_provider||'grok') !== 'gemini' ? 'hidden' : ''}">
             <div class="form-group">
               <label class="form-label">Gemini API Key</label>
               <input type="password" name="gemini_api_key" class="form-input"
                 placeholder="${s.gemini_api_key ? '•••• already set ••••' : 'AIza...'}" autocomplete="off" />
               <p class="text-xs text-slate-400 mt-1">
                 Free — get your key at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-500 underline">aistudio.google.com</a>.
-                No credit card needed · 1,500 req/day free.
               </p>
             </div>
           </div>
 
-          <div id="provider-anthropic-fields" class="${(s.ai_provider||'gemini') !== 'anthropic' ? 'hidden' : ''}">
+          <div id="provider-anthropic-fields" class="${(s.ai_provider||'grok') !== 'anthropic' ? 'hidden' : ''}">
             <div class="form-group">
               <label class="form-label">Anthropic API Key</label>
               <input type="password" name="anthropic_api_key" class="form-input"
                 placeholder="${s.anthropic_api_key ? '•••• already set ••••' : 'sk-ant-...'}" autocomplete="off" />
               <p class="text-xs text-slate-400 mt-1">
                 Get your key at <a href="https://console.anthropic.com" target="_blank" class="text-indigo-500 underline">console.anthropic.com</a>.
-                Suggested model: <code>claude-haiku-4-5</code> (~$0.10/month).
               </p>
             </div>
           </div>
 
-          <div id="provider-openai-fields" class="${(s.ai_provider||'gemini') !== 'openai' ? 'hidden' : ''}">
+          <div id="provider-openai-fields" class="${(s.ai_provider||'grok') !== 'openai' ? 'hidden' : ''}">
             <div class="form-group">
               <label class="form-label">OpenAI API Key</label>
               <input type="password" name="openai_api_key" class="form-input"
                 placeholder="${s.openai_api_key ? '•••• already set ••••' : 'sk-...'}" autocomplete="off" />
               <p class="text-xs text-slate-400 mt-1">
                 Get your key at <a href="https://platform.openai.com/api-keys" target="_blank" class="text-indigo-500 underline">platform.openai.com</a>.
-                Suggested model: <code>gpt-4o-mini</code>.
               </p>
             </div>
           </div>
@@ -370,7 +380,7 @@ const adminPage = (() => {
             <label class="form-label">Model override <span class="text-slate-400 font-normal">(optional)</span></label>
             <input type="text" name="ai_model" class="form-input"
               value="${s.ai_model || ''}"
-              placeholder="Leave blank for default · gemini-1.5-flash-8b (free), gemini-1.5-pro, gpt-4o" />
+              placeholder="Leave blank for default · grok-3-mini, grok-3, gpt-4o-mini, claude-haiku-4-5" />
             <p class="text-xs text-slate-400 mt-1">Override the default model for the selected provider.</p>
           </div>
 
@@ -423,7 +433,7 @@ const adminPage = (() => {
 
   function selectProvider(provider) {
     document.getElementById('ai_provider_input').value = provider;
-    ['gemini', 'anthropic', 'openai'].forEach(p => {
+    ['grok', 'gemini', 'anthropic', 'openai'].forEach(p => {
       document.getElementById(`provider-${p}-fields`).classList.toggle('hidden', p !== provider);
     });
     document.querySelectorAll('.provider-pill').forEach(btn => {

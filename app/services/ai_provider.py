@@ -106,6 +106,7 @@ DEFAULT_MODELS = {
     "gemini":    "gemini-1.5-flash-8b",
     "anthropic": "claude-haiku-4-5",
     "openai":    "gpt-4o-mini",
+    "grok":      "grok-3-mini",
 }
 
 
@@ -123,6 +124,8 @@ def call_agent(db: Session, system: str, user_message: str) -> list[dict]:
         return _call_anthropic(db, system, user_message, model)
     elif provider == "openai":
         return _call_openai(db, system, user_message, model)
+    elif provider == "grok":
+        return _call_grok(db, system, user_message, model)
     else:
         raise ValueError(f"Unknown AI provider: {provider}")
 
@@ -242,6 +245,39 @@ def _call_openai(db: Session, system: str, user_message: str, model: str) -> lis
         raise ValueError("OpenAI API key not configured")
 
     client = OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model=model,
+        tools=_to_openai_tools(TOOL_DEFINITIONS),
+        tool_choice="auto",
+        messages=[
+            {"role": "system", "content": system},
+            {"role": "user",   "content": user_message},
+        ],
+    )
+
+    results = []
+    for choice in response.choices:
+        msg = choice.message
+        if msg.tool_calls:
+            for tc in msg.tool_calls:
+                try:
+                    args = json.loads(tc.function.arguments)
+                except Exception:
+                    args = {}
+                results.append({"name": tc.function.name, "args": args})
+    return results
+
+
+# ─── Grok (xAI) ───────────────────────────────────────────────────────────────
+
+def _call_grok(db: Session, system: str, user_message: str, model: str) -> list[dict]:
+    from openai import OpenAI
+
+    api_key = get_setting(db, "grok_api_key")
+    if not api_key:
+        raise ValueError("Grok API key not configured")
+
+    client = OpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
     response = client.chat.completions.create(
         model=model,
         tools=_to_openai_tools(TOOL_DEFINITIONS),

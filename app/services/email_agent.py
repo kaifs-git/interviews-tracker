@@ -48,7 +48,7 @@ def process_email_for_user(
 
     # Check that some provider key is configured
     provider = get_setting(db, "ai_provider") or "gemini"
-    key_map  = {"gemini": "gemini_api_key", "anthropic": "anthropic_api_key", "openai": "openai_api_key"}
+    key_map  = {"gemini": "gemini_api_key", "anthropic": "anthropic_api_key", "openai": "openai_api_key", "grok": "grok_api_key"}
     if not get_setting(db, key_map.get(provider, "gemini_api_key")):
         logger.warning("Email agent: no API key configured for provider '%s', skipping email %s", provider, email.get("message_id"))
         return None

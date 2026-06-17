@@ -9,13 +9,14 @@ from ..services.scheduler import update_scheduler_interval
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
-SENSITIVE_KEYS = {"gemini_api_key", "anthropic_api_key", "openai_api_key", "google_client_secret", "vapid_private_key"}
+SENSITIVE_KEYS = {"gemini_api_key", "anthropic_api_key", "openai_api_key", "grok_api_key", "google_client_secret", "vapid_private_key"}
 ALLOWED_SETTING_KEYS = {
     "ai_provider",
     "ai_model",
     "gemini_api_key",
     "anthropic_api_key",
     "openai_api_key",
+    "grok_api_key",
     "google_client_id",
     "google_client_secret",
     "google_redirect_uri",
@@ -200,7 +201,7 @@ def get_diagnostics(
 ):
     """Return diagnostic info: AI config, email accounts, recent activity log."""
     provider = get_setting(db, "ai_provider") or "gemini"
-    key_map = {"gemini": "gemini_api_key", "anthropic": "anthropic_api_key", "openai": "openai_api_key"}
+    key_map = {"gemini": "gemini_api_key", "anthropic": "anthropic_api_key", "openai": "openai_api_key", "grok": "grok_api_key"}
     api_key = get_setting(db, key_map.get(provider, "gemini_api_key")) or ""
 
     accounts = db.query(EmailAccount).all()
