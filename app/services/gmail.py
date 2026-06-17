@@ -228,64 +228,32 @@ def _build_gmail_service(access_token: str, refresh_token: str):
 def fetch_new_emails(
     access_token: str,
     refresh_token: str,
-    last_history_id: str = None,
-    max_results: int = 20,
-) -> dict:
+    since_minutes: int = 15,
+    max_results: int = 50,
+) -> list[dict]:
     """
-    Fetch new emails via Gmail API.
+    Fetch emails received in the last `since_minutes` minutes via Gmail API.
+    Uses an `after:<unix_ts>` query so both read and unread emails are included.
+    Returns a list of email dicts (message_id, subject, from_email, from_name, date, body).
+    Deduplication against the DB happens in process_email_for_user.
+    """
+    from datetime import timedelta, timezone as _tz
 
-    Returns:
-        {
-            "emails": [list of email dicts],
-            "new_history_id": "string or None"
-        }
-    Each email dict has: message_id, subject, from_email, from_name, date, body
-    """
     service = _build_gmail_service(access_token, refresh_token)
-    message_ids = []
-    new_history_id = last_history_id
 
-    if last_history_id:
-        # Incremental sync via history list
-        try:
-            history_response = (
-                service.users()
-                .history()
-                .list(
-                    userId="me",
-                    startHistoryId=last_history_id,
-                    historyTypes=["messageAdded"],
-                    maxResults=max_results,
-                )
-                .execute()
-            )
-            new_history_id = history_response.get("historyId", last_history_id)
-            for history_item in history_response.get("history", []):
-                for msg_added in history_item.get("messagesAdded", []):
-                    msg_id = msg_added.get("message", {}).get("id")
-                    if msg_id and msg_id not in message_ids:
-                        message_ids.append(msg_id)
-        except Exception as e:
-            logger.warning(f"History sync failed (falling back to initial sync): {e}")
-            last_history_id = None
+    since_ts = int((datetime.now(_tz.utc) - timedelta(minutes=since_minutes)).timestamp())
+    query = f"after:{since_ts}"
+    logger.info("Gmail query: %s (since_minutes=%d)", query, since_minutes)
 
-    if not last_history_id:
-        # Initial sync — fetch recent emails (read or unread) from the past 7 days
-        list_response = (
-            service.users()
-            .messages()
-            .list(
-                userId="me",
-                q="newer_than:7d",
-                maxResults=max_results,
-            )
-            .execute()
-        )
-        new_history_id = list_response.get("historyId", new_history_id)
-        for msg in list_response.get("messages", []):
-            msg_id = msg.get("id")
-            if msg_id and msg_id not in message_ids:
-                message_ids.append(msg_id)
+    list_response = (
+        service.users()
+        .messages()
+        .list(userId="me", q=query, maxResults=max_results)
+        .execute()
+    )
+
+    message_ids = [m["id"] for m in list_response.get("messages", [])]
+    logger.info("Gmail returned %d message IDs", len(message_ids))
 
     emails = []
     for msg_id in message_ids:
@@ -296,15 +264,11 @@ def fetch_new_emails(
                 .get(userId="me", id=msg_id, format="full")
                 .execute()
             )
-            email_dict = _parse_message(full_msg)
-            emails.append(email_dict)
+            emails.append(_parse_message(full_msg))
         except Exception as e:
-            logger.warning(f"Could not fetch message {msg_id}: {e}")
+            logger.warning("Could not fetch message %s: %s", msg_id, e)
 
-    return {
-        "emails": emails,
-        "new_history_id": new_history_id,
-    }
+    return emails
 
 
 def _parse_message(message: dict) -> dict:

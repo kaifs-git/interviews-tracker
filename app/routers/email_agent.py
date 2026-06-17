@@ -196,18 +196,29 @@ def trigger_email_sync(
     if not accounts:
         raise HTTPException(status_code=400, detail="No connected email accounts found")
 
+    from ..services.scheduler import _get_interval
+    since_minutes = _get_interval(db)
+
     synced = 0
     emails_found = 0
+    emails_new = 0
     errors = []
     for account in accounts:
         try:
-            result = _sync_account(db, account)
+            result = _sync_account(db, account, since_minutes)
             synced += 1
-            emails_found += result.get("emails_found", 0) if result else 0
+            emails_found += result.get("emails_found", 0)
+            emails_new += result.get("emails_new", 0)
         except Exception as e:
             errors.append({"account": account.email_address, "error": str(e)})
 
-    return {"accounts_synced": synced, "emails_found": emails_found, "errors": errors}
+    return {
+        "accounts_synced": synced,
+        "since_minutes": since_minutes,
+        "emails_found": emails_found,
+        "emails_new": emails_new,
+        "errors": errors,
+    }
 
 
 # ── Vercel Cron endpoint ───────────────────────────────────────────────────────
@@ -224,7 +235,7 @@ def cron_email_sync(request: Request):
         if auth != f"Bearer {cron_secret}":
             raise HTTPException(status_code=401, detail="Unauthorized")
     run_email_sync_for_all_users()
-    return {"ok": True}
+    return {"ok": True, "ts": datetime.utcnow().isoformat()}
 
 
 # ── Agent activity log ─────────────────────────────────────────────────────────
