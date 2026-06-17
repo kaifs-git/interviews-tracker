@@ -169,7 +169,7 @@ def _call_gemini(db: Session, system: str, user_message: str, model: str) -> lis
     if not api_key:
         raise ValueError("Gemini API key not configured")
 
-    client = genai.Client(api_key=api_key, http_options={"api_version": "v1"})
+    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model=model,
         contents=user_message,
