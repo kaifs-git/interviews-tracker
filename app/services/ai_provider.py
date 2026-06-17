@@ -106,7 +106,7 @@ DEFAULT_MODELS = {
     "gemini":    "gemini-1.5-flash-8b",
     "anthropic": "claude-haiku-4-5",
     "openai":    "gpt-4o-mini",
-    "grok":      "grok-3-mini",
+    "groq":      "llama-3.3-70b-versatile",
 }
 
 
@@ -124,8 +124,8 @@ def call_agent(db: Session, system: str, user_message: str) -> list[dict]:
         return _call_anthropic(db, system, user_message, model)
     elif provider == "openai":
         return _call_openai(db, system, user_message, model)
-    elif provider == "grok":
-        return _call_grok(db, system, user_message, model)
+    elif provider == "groq":
+        return _call_groq(db, system, user_message, model)
     else:
         raise ValueError(f"Unknown AI provider: {provider}")
 
@@ -268,16 +268,16 @@ def _call_openai(db: Session, system: str, user_message: str, model: str) -> lis
     return results
 
 
-# ─── Grok (xAI) ───────────────────────────────────────────────────────────────
+# ─── Groq ─────────────────────────────────────────────────────────────────────
 
-def _call_grok(db: Session, system: str, user_message: str, model: str) -> list[dict]:
+def _call_groq(db: Session, system: str, user_message: str, model: str) -> list[dict]:
     from openai import OpenAI
 
-    api_key = get_setting(db, "grok_api_key")
+    api_key = get_setting(db, "groq_api_key")
     if not api_key:
-        raise ValueError("Grok API key not configured")
+        raise ValueError("Groq API key not configured")
 
-    client = OpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
+    client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
     response = client.chat.completions.create(
         model=model,
         tools=_to_openai_tools(TOOL_DEFINITIONS),

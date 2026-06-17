@@ -311,7 +311,7 @@ const adminPage = (() => {
             <div class="flex flex-wrap gap-2" id="provider-pills">
               ${[
                 { value: 'gemini',    label: 'Gemini',    badge: 'Free',   badgeCls: 'bg-emerald-100 text-emerald-700' },
-                { value: 'grok',      label: 'Grok',      badge: 'xAI',    badgeCls: 'bg-sky-100 text-sky-700' },
+                { value: 'groq',      label: 'Groq',      badge: 'Free',   badgeCls: 'bg-sky-100 text-sky-700' },
                 { value: 'anthropic', label: 'Anthropic', badge: 'Paid',   badgeCls: 'bg-amber-100 text-amber-700' },
                 { value: 'openai',    label: 'OpenAI',    badge: 'Paid',   badgeCls: 'bg-violet-100 text-violet-700' },
               ].map(p => {
@@ -326,18 +326,18 @@ const adminPage = (() => {
                 </button>`;
               }).join('')}
             </div>
-            <input type="hidden" name="ai_provider" id="ai_provider_input" value="${s.ai_provider || 'grok'}" />
+            <input type="hidden" name="ai_provider" id="ai_provider_input" value="${s.ai_provider || 'groq'}" />
           </div>
 
           <!-- Per-provider key fields -->
-          <div id="provider-grok-fields" class="${(s.ai_provider||'grok') !== 'grok' ? 'hidden' : ''}">
+          <div id="provider-groq-fields" class="${(s.ai_provider||'grok') !== 'grok' ? 'hidden' : ''}">
             <div class="form-group">
               <label class="form-label">Grok API Key</label>
-              <input type="password" name="grok_api_key" class="form-input"
-                placeholder="${s.grok_api_key ? '•••• already set ••••' : 'xai-...'}" autocomplete="off" />
+              <input type="password" name="groq_api_key" class="form-input"
+                placeholder="${s.groq_api_key ? '•••• already set ••••' : 'xai-...'}" autocomplete="off" />
               <p class="text-xs text-slate-400 mt-1">
-                Get your key at <a href="https://console.x.ai" target="_blank" class="text-indigo-500 underline">console.x.ai</a>.
-                Default model: <code>grok-3-mini</code>.
+                Get your key at <a href="https://console.groq.com" target="_blank" class="text-indigo-500 underline">console.groq.com</a>.
+                Free tier · default model: <code>llama-3.3-70b-versatile</code>.
               </p>
             </div>
           </div>
@@ -433,7 +433,7 @@ const adminPage = (() => {
 
   function selectProvider(provider) {
     document.getElementById('ai_provider_input').value = provider;
-    ['grok', 'gemini', 'anthropic', 'openai'].forEach(p => {
+    ['groq', 'gemini', 'anthropic', 'openai'].forEach(p => {
       document.getElementById(`provider-${p}-fields`).classList.toggle('hidden', p !== provider);
     });
     document.querySelectorAll('.provider-pill').forEach(btn => {
