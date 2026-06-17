@@ -370,7 +370,7 @@ const adminPage = (() => {
             <label class="form-label">Model override <span class="text-slate-400 font-normal">(optional)</span></label>
             <input type="text" name="ai_model" class="form-input"
               value="${s.ai_model || ''}"
-              placeholder="Leave blank for default · e.g. gemini-1.5-pro, claude-sonnet-4-6, gpt-4o" />
+              placeholder="Leave blank for default · gemini-1.5-flash-8b (free), gemini-1.5-pro, gpt-4o" />
             <p class="text-xs text-slate-400 mt-1">Override the default model for the selected provider.</p>
           </div>
 
