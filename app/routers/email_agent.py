@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Optional, List
 
@@ -202,6 +203,23 @@ def trigger_email_sync(
             errors.append({"account_id": account.id, "error": str(e)})
 
     return {"synced": synced, "errors": errors}
+
+
+# ── Vercel Cron endpoint ───────────────────────────────────────────────────────
+
+@router.get("/api/cron/email-sync")
+def cron_email_sync(request: Request):
+    """
+    Called by Vercel Cron Jobs on a schedule to sync all users' inboxes.
+    Protected by CRON_SECRET env var (Vercel sets Authorization: Bearer <secret>).
+    """
+    cron_secret = os.environ.get("CRON_SECRET", "")
+    if cron_secret:
+        auth = request.headers.get("authorization", "")
+        if auth != f"Bearer {cron_secret}":
+            raise HTTPException(status_code=401, detail="Unauthorized")
+    run_email_sync_for_all_users()
+    return {"ok": True}
 
 
 # ── Agent activity log ─────────────────────────────────────────────────────────

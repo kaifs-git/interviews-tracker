@@ -14,5 +14,11 @@
       "source": "/(.*)",
       "destination": "/api/index.py"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/email-sync",
+      "schedule": "0 * * * *"
+    }
   ]
 }
