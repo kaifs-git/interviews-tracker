@@ -38,9 +38,11 @@ def process_email_for_user(
     email: dict,
 ) -> "AgentActivityLog | None":
     """Run the Gemini agent on a single email and persist results."""
-    # Dedup — skip if already processed
-    if db.query(AgentActivityLog).filter_by(
-        user_id=user_id, email_message_id=email["message_id"]
+    # Dedup — skip if already successfully processed (don't skip error entries so they get retried)
+    if db.query(AgentActivityLog).filter(
+        AgentActivityLog.user_id == user_id,
+        AgentActivityLog.email_message_id == email["message_id"],
+        AgentActivityLog.status != "error",
     ).first():
         return None
 
