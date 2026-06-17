@@ -1,14 +1,15 @@
 // Applications list + detail page
 const applicationsPage = (() => {
   let applications = [];
-  let companies = [];
-  let filters = {};
+  let companies    = [];
+  let filters      = {};
+  let filtersOpen  = false;
 
-  const STAGES   = ['Applied','Shortlisted','Phone Screen','Technical Round','HR Round','Final Round','Offer','Accepted','Rejected','Withdrawn'];
-  const RESULTS  = ['Pending','Selected','Rejected','Withdrawn','Offer Declined'];
-  const SOURCES  = ['LinkedIn','Naukri','Indeed','Company Website','Referral','Job Fair','Recruiter','Other'];
-  const MODES    = ['Remote','Hybrid','Onsite'];
-  const TYPES    = ['Full-time','Part-time','Contract','Internship','Freelance'];
+  const STAGES  = ['Applied','Shortlisted','Phone Screen','Technical Round','HR Round','Final Round','Offer','Accepted','Rejected','Withdrawn'];
+  const RESULTS = ['Pending','Selected','Rejected','Withdrawn','Offer Declined'];
+  const SOURCES = ['LinkedIn','Naukri','Indeed','Company Website','Referral','Job Fair','Recruiter','Other'];
+  const MODES   = ['Remote','Hybrid','Onsite'];
+  const TYPES   = ['Full-time','Part-time','Contract','Internship','Freelance'];
 
   async function render(params = {}) {
     filters = params || {};
@@ -16,7 +17,10 @@ const applicationsPage = (() => {
     setPageActions(btn('Add', 'applicationsPage.openAddModal()', 'primary', 'fa-plus'));
 
     const content = document.getElementById('page-content');
-    content.innerHTML = `<div class="flex items-center justify-center py-20"><div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div></div>`;
+    content.innerHTML = `
+      <div class="flex items-center justify-center py-24">
+        <div class="w-8 h-8 border-[3px] border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+      </div>`;
 
     try {
       [applications, companies] = await Promise.all([
@@ -25,8 +29,7 @@ const applicationsPage = (() => {
       ]);
     } catch (e) {
       toast.error('Failed to load applications');
-      applications = [];
-      companies = [];
+      applications = []; companies = [];
     }
 
     content.innerHTML = renderList();
@@ -38,60 +41,95 @@ const applicationsPage = (() => {
     if (badge) {
       const active = applications.filter(a => a.final_result === 'Pending').length;
       if (active > 0) { badge.textContent = active; badge.classList.remove('hidden'); }
-      else { badge.classList.add('hidden'); }
+      else badge.classList.add('hidden');
     }
   }
 
+  function hasActiveFilter() {
+    return !!(filters.search || filters.stage || filters.result || filters.priority || filters.company_id);
+  }
+
   function renderFilters() {
+    const active = hasActiveFilter();
+    // On desktop always show; on mobile show toggle button + collapsible panel
     return `
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-3 sm:p-4 mb-4">
-        <div class="flex flex-col sm:flex-row gap-2.5">
-          <div class="flex-1 relative">
-            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-            <input id="search-input" type="text" placeholder="Search role or company…"
-              class="form-input pl-9 py-2.5"
-              value="${filters.search || ''}" onkeyup="applicationsPage.applyFilter()" />
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm mb-4 overflow-hidden">
+        <!-- Mobile filter toggle header -->
+        <div class="flex items-center justify-between px-4 py-3 sm:hidden border-b border-slate-50 cursor-pointer"
+          onclick="applicationsPage.toggleFilters()">
+          <div class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <i class="fa-solid fa-sliders text-slate-400"></i>
+            Filters
+            ${active ? `<span class="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>` : ''}
           </div>
-          <div class="grid grid-cols-3 sm:flex gap-2">
-            <select id="filter-stage" class="form-input py-2.5 text-sm" onchange="applicationsPage.applyFilter()">
-              <option value="">All Stages</option>
-              ${STAGES.map(s => `<option value="${s}" ${filters.stage === s ? 'selected' : ''}>${s}</option>`).join('')}
-            </select>
-            <select id="filter-result" class="form-input py-2.5 text-sm" onchange="applicationsPage.applyFilter()">
-              <option value="">All Results</option>
-              ${RESULTS.map(r => `<option value="${r}" ${filters.result === r ? 'selected' : ''}>${r}</option>`).join('')}
-            </select>
-            <select id="filter-priority" class="form-input py-2.5 text-sm" onchange="applicationsPage.applyFilter()">
-              <option value="">All Priority</option>
-              ${['High','Medium','Low'].map(p => `<option value="${p}" ${filters.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
-            </select>
+          <i class="fa-solid fa-chevron-${filtersOpen ? 'up' : 'down'} text-slate-400 text-xs"></i>
+        </div>
+
+        <!-- Filter fields: always visible on sm+, collapsible on mobile -->
+        <div id="filter-panel" class="${filtersOpen ? '' : 'hidden'} sm:block p-3 sm:p-4">
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <!-- Search -->
+            <div class="flex-1 relative">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none"></i>
+              <input id="search-input" type="text" placeholder="Search role or company…"
+                class="form-input pl-9" value="${filters.search || ''}"
+                onkeyup="applicationsPage.applyFilter()" />
+            </div>
+            <!-- Dropdowns -->
+            <div class="grid grid-cols-3 sm:flex gap-2">
+              <select id="filter-stage" class="form-input text-sm" onchange="applicationsPage.applyFilter()">
+                <option value="">All Stages</option>
+                ${STAGES.map(s => `<option value="${s}" ${filters.stage===s?'selected':''}>${s}</option>`).join('')}
+              </select>
+              <select id="filter-result" class="form-input text-sm" onchange="applicationsPage.applyFilter()">
+                <option value="">All Results</option>
+                ${RESULTS.map(r => `<option value="${r}" ${filters.result===r?'selected':''}>${r}</option>`).join('')}
+              </select>
+              <select id="filter-priority" class="form-input text-sm" onchange="applicationsPage.applyFilter()">
+                <option value="">All Priority</option>
+                ${['High','Medium','Low'].map(p => `<option value="${p}" ${filters.priority===p?'selected':''}>${p}</option>`).join('')}
+              </select>
+            </div>
+            ${active ? `
+              <button onclick="applicationsPage.clearFilters()"
+                class="flex items-center justify-center gap-1.5 px-3 text-sm text-slate-500 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-xl transition-colors border border-slate-200 sm:flex-shrink-0">
+                <i class="fa-solid fa-xmark"></i><span>Clear</span>
+              </button>` : ''}
           </div>
-          ${(filters.company_id || filters.search || filters.stage || filters.result || filters.priority) ? `
-            <button onclick="applicationsPage.clearFilters()"
-              class="flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-slate-500 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-lg transition-colors border border-slate-200">
-              <i class="fa-solid fa-xmark"></i><span class="sm:hidden">Clear</span>
-            </button>
-          ` : ''}
         </div>
       </div>
     `;
   }
 
+  function toggleFilters() {
+    filtersOpen = !filtersOpen;
+    const panel = document.getElementById('filter-panel');
+    const icon  = document.querySelector('[onclick="applicationsPage.toggleFilters()"] i.fa-chevron-up, [onclick="applicationsPage.toggleFilters()"] i.fa-chevron-down');
+    if (panel) panel.classList.toggle('hidden', !filtersOpen);
+    if (icon) {
+      icon.classList.toggle('fa-chevron-down', !filtersOpen);
+      icon.classList.toggle('fa-chevron-up', filtersOpen);
+    }
+  }
+
   function renderMobileCards() {
     if (!applications.length) {
-      return `<div class="sm:hidden">${emptyState('fa-folder-open', 'No applications found', 'Start by adding your first job application', btn('Add Application', 'applicationsPage.openAddModal()', 'primary', 'fa-plus'))}</div>`;
+      return `<div class="sm:hidden">
+        ${emptyState('fa-folder-open', 'No applications found', 'Start by adding your first job application',
+          btn('Add Application', 'applicationsPage.openAddModal()', 'primary', 'fa-plus'))}
+      </div>`;
     }
     const cards = applications.map(a => `
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 cursor-pointer active:scale-[0.99] transition-transform"
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 cursor-pointer active:scale-[0.99] transition-transform"
         onclick="router.navigate('application-detail', {id:${a.id}})">
-        <div class="flex items-start justify-between mb-2.5">
+        <div class="flex items-start justify-between mb-3">
           <div class="flex items-center gap-3 flex-1 min-w-0">
-            <div class="w-10 h-10 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold text-indigo-600">
-              ${(a.company_name || '?')[0].toUpperCase()}
+            <div class="w-10 h-10 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-indigo-600 text-sm">
+              ${(a.company_name||'?')[0].toUpperCase()}
             </div>
             <div class="min-w-0">
               <p class="font-semibold text-slate-800 text-sm leading-snug truncate">${a.job_title}</p>
-              <p class="text-slate-400 text-xs mt-0.5">${a.company_name || '—'}</p>
+              <p class="text-slate-400 text-xs mt-0.5">${a.company_name||'—'}</p>
             </div>
           </div>
           <div class="flex gap-0.5 ml-2 flex-shrink-0" onclick="event.stopPropagation()">
@@ -99,7 +137,7 @@ const applicationsPage = (() => {
               class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
               <i class="fa-solid fa-pen-to-square text-xs"></i>
             </button>
-            <button onclick="applicationsPage.confirmDelete(${a.id},'${a.job_title.replace(/'/g,"\\'")}')"
+            <button onclick="applicationsPage.confirmDelete(${a.id},'${(a.job_title||'').replace(/'/g,"\\'")}')"
               class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
               <i class="fa-solid fa-trash text-xs"></i>
             </button>
@@ -109,11 +147,11 @@ const applicationsPage = (() => {
           ${statusBadge(a.current_stage, a.final_result)}
           ${a.work_mode ? workModeChip(a.work_mode) : ''}
         </div>
-        <div class="flex items-center justify-between text-xs">
-          <span class="text-slate-600 font-medium">${formatPay(a.payscale_min, a.payscale_max, a.payscale_currency, a.payscale_type)}</span>
-          <div class="flex items-center gap-2.5 text-slate-400">
+        <div class="flex items-center justify-between text-xs text-slate-500">
+          <span class="font-medium text-slate-600">${formatPay(a.payscale_min, a.payscale_max, a.payscale_currency, a.payscale_type)}</span>
+          <div class="flex items-center gap-2.5">
             <span class="${priorityColor(a.priority)} font-medium">${priorityIcon(a.priority)} ${a.priority}</span>
-            <span><i class="fa-solid fa-microphone-lines mr-0.5"></i>${a.interview_count}</span>
+            <span><i class="fa-solid fa-microphone-lines text-slate-300 mr-0.5"></i>${a.interview_count}</span>
             <span>${formatDate(a.application_date)}</span>
           </div>
         </div>
@@ -125,50 +163,61 @@ const applicationsPage = (() => {
   function renderDesktopTable() {
     const rows = applications.length
       ? applications.map(a => `
-        <tr class="cursor-pointer hover:bg-slate-50 transition-colors" onclick="router.navigate('application-detail', {id:${a.id}})">
+        <tr class="cursor-pointer hover:bg-slate-50/80 transition-colors"
+          onclick="router.navigate('application-detail', {id:${a.id}})">
           <td class="px-5 py-4">
             <div class="flex items-center gap-3">
-              <div class="w-9 h-9 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-lg flex items-center justify-center flex-shrink-0 text-sm font-bold text-indigo-600">
-                ${(a.company_name || '?')[0].toUpperCase()}
+              <div class="w-9 h-9 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-indigo-600 text-sm">
+                ${(a.company_name||'?')[0].toUpperCase()}
               </div>
               <div>
                 <p class="font-semibold text-slate-800 text-sm">${a.job_title}</p>
-                <p class="text-slate-400 text-xs">${a.company_name || '—'}</p>
+                <p class="text-slate-400 text-xs">${a.company_name||'—'}</p>
               </div>
             </div>
           </td>
           <td class="px-5 py-4">${statusBadge(a.current_stage, a.final_result)}</td>
           <td class="px-5 py-4">${a.work_mode ? workModeChip(a.work_mode) : '<span class="text-slate-300">—</span>'}</td>
           <td class="px-5 py-4 text-sm text-slate-600">${formatPay(a.payscale_min, a.payscale_max, a.payscale_currency, a.payscale_type)}</td>
-          <td class="px-5 py-4 text-sm text-slate-600"><i class="fa-solid fa-microphone-lines text-slate-400 text-xs mr-1"></i>${a.interview_count}</td>
+          <td class="px-5 py-4 text-sm text-slate-600">
+            <span class="flex items-center gap-1"><i class="fa-solid fa-microphone-lines text-slate-300 text-xs"></i>${a.interview_count}</span>
+          </td>
           <td class="px-5 py-4 text-sm text-slate-500">${formatDate(a.application_date)}</td>
           <td class="px-5 py-4 text-sm ${priorityColor(a.priority)} font-medium">${priorityIcon(a.priority)} ${a.priority}</td>
           <td class="px-5 py-4">
             <div class="flex gap-1" onclick="event.stopPropagation()">
-              <button onclick="applicationsPage.openEditModal(${a.id})" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
-              <button onclick="applicationsPage.confirmDelete(${a.id},'${a.job_title.replace(/'/g,"\\'")}')" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
+              <button onclick="applicationsPage.openEditModal(${a.id})"
+                class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                <i class="fa-solid fa-pen-to-square text-xs"></i>
+              </button>
+              <button onclick="applicationsPage.confirmDelete(${a.id},'${(a.job_title||'').replace(/'/g,"\\'")}')"
+                class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                <i class="fa-solid fa-trash text-xs"></i>
+              </button>
             </div>
           </td>
         </tr>
       `).join('')
-      : `<tr><td colspan="8"><div class="empty-state py-14">
-          <i class="fa-solid fa-folder-open text-3xl text-slate-200 block mb-3"></i>
-          <h3 class="text-slate-500 font-medium mb-1">No applications found</h3>
-          <p class="text-slate-400 text-sm mb-4">Start by adding your first job application</p>
-          ${btn('Add Application', 'applicationsPage.openAddModal()', 'primary', 'fa-plus')}
-        </div></td></tr>`;
+      : `<tr><td colspan="8">
+          <div class="empty-state py-14">
+            <i class="fa-solid fa-folder-open"></i>
+            <h3>No applications found</h3>
+            <p>Start by adding your first job application</p>
+            <div class="mt-5">${btn('Add Application', 'applicationsPage.openAddModal()', 'primary', 'fa-plus')}</div>
+          </div>
+        </td></tr>`;
 
     return `
-      <div class="hidden sm:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-5 py-3.5 border-b border-slate-100">
-          <p class="text-sm text-slate-500">${applications.length} application${applications.length !== 1 ? 's' : ''}</p>
+      <div class="hidden sm:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-50">
+          <p class="text-sm text-slate-500 font-medium">${applications.length} application${applications.length!==1?'s':''}</p>
         </div>
         <div class="overflow-x-auto">
           <table class="data-table">
             <thead>
               <tr>
                 <th>Role / Company</th><th>Status</th><th>Mode</th>
-                <th>Pay Range</th><th>Interviews</th><th>Applied</th>
+                <th>Pay Range</th><th>Rounds</th><th>Applied</th>
                 <th>Priority</th><th></th>
               </tr>
             </thead>
@@ -179,7 +228,7 @@ const applicationsPage = (() => {
   }
 
   function renderList() {
-    const countLine = `<p class="text-xs text-slate-400 mb-3 sm:hidden">${applications.length} application${applications.length !== 1 ? 's' : ''}</p>`;
+    const countLine = `<p class="text-xs text-slate-400 mb-3 sm:hidden font-medium">${applications.length} application${applications.length!==1?'s':''}</p>`;
     return renderFilters() + countLine + renderMobileCards() + renderDesktopTable();
   }
 
@@ -196,7 +245,7 @@ const applicationsPage = (() => {
     }).catch(() => {});
   }
 
-  function clearFilters() { filters = {}; render({}); }
+  function clearFilters() { filters = {}; filtersOpen = false; render({}); }
 
   function appForm(a = {}) {
     const companyOptions = companies.map(c => ({ value: c.id, label: c.name }));
@@ -224,9 +273,9 @@ const applicationsPage = (() => {
 
         <div class="form-section-divider">Job Details</div>
         ${pillSelect('Work Mode', 'work_mode', a.work_mode, [
-          { value:'Remote', label:'🌐 Remote', active:'bg-teal-600 text-white',    color:'bg-slate-100 text-slate-600' },
-          { value:'Hybrid', label:'🔀 Hybrid', active:'bg-violet-600 text-white',  color:'bg-slate-100 text-slate-600' },
-          { value:'Onsite', label:'🏢 Onsite', active:'bg-orange-500 text-white',  color:'bg-slate-100 text-slate-600' },
+          { value:'Remote', label:'🌐 Remote', active:'bg-teal-600 text-white',   color:'bg-slate-100 text-slate-600' },
+          { value:'Hybrid', label:'🔀 Hybrid', active:'bg-violet-600 text-white', color:'bg-slate-100 text-slate-600' },
+          { value:'Onsite', label:'🏢 Onsite', active:'bg-orange-500 text-white', color:'bg-slate-100 text-slate-600' },
         ])}
         ${pillSelect('Job Type', 'job_type', a.job_type, [
           { value:'Full-time',  label:'Full-time',  active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
@@ -280,11 +329,10 @@ const applicationsPage = (() => {
       title: 'New Application',
       body: appForm(),
       footer: `
-        <button onclick="modal.close()" class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800">Cancel</button>
-        <button onclick="applicationsPage.submitCreate()" class="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
-          <i class="fa-solid fa-plus mr-1"></i>Add Application
-        </button>
-      `,
+        <button onclick="modal.close()" class="btn-ghost">Cancel</button>
+        <button onclick="applicationsPage.submitCreate()" class="btn-primary">
+          <i class="fa-solid fa-plus"></i>Add Application
+        </button>`,
       wide: true,
     });
   }
@@ -302,11 +350,8 @@ const applicationsPage = (() => {
       title: 'Edit Application',
       body: appForm(a),
       footer: `
-        <button onclick="modal.close()" class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800">Cancel</button>
-        <button onclick="applicationsPage.submitUpdate(${id})" class="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
-          Save Changes
-        </button>
-      `,
+        <button onclick="modal.close()" class="btn-ghost">Cancel</button>
+        <button onclick="applicationsPage.submitUpdate(${id})" class="btn-primary">Save Changes</button>`,
       wide: true,
     });
   }
@@ -316,7 +361,7 @@ const applicationsPage = (() => {
     if (!form) return;
     const data = getFormData(form);
     if (!data.company_id) { toast.warning('Please select a company'); return; }
-    if (!data.job_title)  { toast.warning('Job title is required'); return; }
+    if (!data.job_title)  { toast.warning('Job title is required');   return; }
     if (data.company_id) data.company_id = parseInt(data.company_id);
     try {
       const app = await api.createApplication(data);
@@ -373,5 +418,9 @@ const applicationsPage = (() => {
 
   function getCompanies() { return companies; }
 
-  return { render, applyFilter, clearFilters, openAddModal, openEditModal, submitCreate, submitUpdate, confirmDelete, getCompanies };
+  return {
+    render, applyFilter, clearFilters, toggleFilters,
+    openAddModal, openEditModal, submitCreate, submitUpdate,
+    confirmDelete, getCompanies,
+  };
 })();
