@@ -287,20 +287,75 @@ const adminPage = (() => {
             <p class="text-xs text-slate-400 mt-1">How often the agent checks each connected inbox (5–120 min). Only applies when running as a persistent server (not Vercel).</p>
           </div>
 
-          <div class="form-section">AI Configuration</div>
+          <div class="form-section">AI Model</div>
+
+          <!-- Provider selector -->
           <div class="form-group">
-            <label class="form-label">
-              Gemini API Key <span class="text-red-500">*</span>
-              <span class="ml-2 badge bg-emerald-100 text-emerald-700 text-[10px]">Free</span>
-            </label>
-            <input type="password" name="gemini_api_key" class="form-input"
-              placeholder="${s.gemini_api_key ? '•••• already set ••••' : 'AIza...'}"
-              autocomplete="off" />
-            <p class="text-xs text-slate-400 mt-1">
-              Free tier — get your key at
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-500 underline">aistudio.google.com</a>.
-              No credit card required. 1,500 free requests/day.
-            </p>
+            <label class="form-label">Provider</label>
+            <div class="flex flex-wrap gap-2" id="provider-pills">
+              ${[
+                { value: 'gemini',    label: 'Gemini',    badge: 'Free',   badgeCls: 'bg-emerald-100 text-emerald-700' },
+                { value: 'anthropic', label: 'Anthropic', badge: 'Paid',   badgeCls: 'bg-amber-100 text-amber-700' },
+                { value: 'openai',    label: 'OpenAI',    badge: 'Paid',   badgeCls: 'bg-violet-100 text-violet-700' },
+              ].map(p => {
+                const active = (s.ai_provider || 'gemini') === p.value;
+                return `<button type="button"
+                  onclick="adminPage.selectProvider('${p.value}')"
+                  data-provider="${p.value}"
+                  class="provider-pill flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-all
+                    ${active ? 'bg-indigo-600 text-white border-transparent shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}">
+                  ${p.label}
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? 'bg-white/20 text-white' : p.badgeCls}">${p.badge}</span>
+                </button>`;
+              }).join('')}
+            </div>
+            <input type="hidden" name="ai_provider" id="ai_provider_input" value="${s.ai_provider || 'gemini'}" />
+          </div>
+
+          <!-- Per-provider key fields -->
+          <div id="provider-gemini-fields" class="${(s.ai_provider||'gemini') !== 'gemini' ? 'hidden' : ''}">
+            <div class="form-group">
+              <label class="form-label">Gemini API Key</label>
+              <input type="password" name="gemini_api_key" class="form-input"
+                placeholder="${s.gemini_api_key ? '•••• already set ••••' : 'AIza...'}" autocomplete="off" />
+              <p class="text-xs text-slate-400 mt-1">
+                Free — get your key at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-500 underline">aistudio.google.com</a>.
+                No credit card needed · 1,500 req/day free.
+              </p>
+            </div>
+          </div>
+
+          <div id="provider-anthropic-fields" class="${(s.ai_provider||'gemini') !== 'anthropic' ? 'hidden' : ''}">
+            <div class="form-group">
+              <label class="form-label">Anthropic API Key</label>
+              <input type="password" name="anthropic_api_key" class="form-input"
+                placeholder="${s.anthropic_api_key ? '•••• already set ••••' : 'sk-ant-...'}" autocomplete="off" />
+              <p class="text-xs text-slate-400 mt-1">
+                Get your key at <a href="https://console.anthropic.com" target="_blank" class="text-indigo-500 underline">console.anthropic.com</a>.
+                Suggested model: <code>claude-haiku-4-5</code> (~$0.10/month).
+              </p>
+            </div>
+          </div>
+
+          <div id="provider-openai-fields" class="${(s.ai_provider||'gemini') !== 'openai' ? 'hidden' : ''}">
+            <div class="form-group">
+              <label class="form-label">OpenAI API Key</label>
+              <input type="password" name="openai_api_key" class="form-input"
+                placeholder="${s.openai_api_key ? '•••• already set ••••' : 'sk-...'}" autocomplete="off" />
+              <p class="text-xs text-slate-400 mt-1">
+                Get your key at <a href="https://platform.openai.com/api-keys" target="_blank" class="text-indigo-500 underline">platform.openai.com</a>.
+                Suggested model: <code>gpt-4o-mini</code>.
+              </p>
+            </div>
+          </div>
+
+          <!-- Optional model override -->
+          <div class="form-group">
+            <label class="form-label">Model override <span class="text-slate-400 font-normal">(optional)</span></label>
+            <input type="text" name="ai_model" class="form-input"
+              value="${s.ai_model || ''}"
+              placeholder="Leave blank for default · e.g. gemini-1.5-pro, claude-sonnet-4-6, gpt-4o" />
+            <p class="text-xs text-slate-400 mt-1">Override the default model for the selected provider.</p>
           </div>
 
           <div class="form-section">Gmail OAuth</div>
@@ -312,7 +367,7 @@ const adminPage = (() => {
           <div class="form-group">
             <label class="form-label">Google Client Secret</label>
             <input type="password" name="google_client_secret" class="form-input"
-              placeholder="${s.google_client_secret_set ? '••••••••••••••••' : 'GOCSPX-...'}"
+              placeholder="${s.google_client_secret ? '•••• already set ••••' : 'GOCSPX-...'}"
               autocomplete="off" />
           </div>
           <div class="form-group">
@@ -348,6 +403,23 @@ const adminPage = (() => {
         </form>
       </div>
     `;
+  }
+
+  function selectProvider(provider) {
+    document.getElementById('ai_provider_input').value = provider;
+    ['gemini', 'anthropic', 'openai'].forEach(p => {
+      document.getElementById(`provider-${p}-fields`).classList.toggle('hidden', p !== provider);
+    });
+    document.querySelectorAll('.provider-pill').forEach(btn => {
+      const isActive = btn.dataset.provider === provider;
+      btn.className = btn.className.replace(/bg-indigo-600 text-white border-transparent shadow-sm|bg-white text-slate-600 border-slate-200 hover:border-indigo-300/, '');
+      btn.classList.add(...(isActive
+        ? ['bg-indigo-600', 'text-white', 'border-transparent', 'shadow-sm']
+        : ['bg-white', 'text-slate-600', 'border-slate-200', 'hover:border-indigo-300']
+      ));
+      const badge = btn.querySelector('span');
+      if (badge) badge.className = isActive ? 'text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-white/20 text-white' : badge.className;
+    });
   }
 
   async function saveSettings(e) {
@@ -389,5 +461,5 @@ const adminPage = (() => {
     } catch (_) {}
   }
 
-  return { render, switchTab, saveSettings, approveUser, rejectUser, toggleActive, confirmDelete, deleteUser };
+  return { render, switchTab, selectProvider, saveSettings, approveUser, rejectUser, toggleActive, confirmDelete, deleteUser };
 })();

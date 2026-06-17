@@ -1,103 +1,11 @@
 import json
 from datetime import datetime, date
 from sqlalchemy.orm import Session
-import google.generativeai as genai
 
 from ..models import JobApplication, Company, Contact, InterviewRound, AgentActivityLog, EmailAccount
 from .settings_service import get_setting
 from .push_notify import send_push
-
-# Gemini tool declarations (OpenAPI-compatible schema)
-TOOL_DECLARATIONS = [
-    {
-        "name": "create_application",
-        "description": "Create a new job application record when an email shows a new application was submitted or a recruiter reached out about a specific role.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "company_name": {"type": "string", "description": "Company name"},
-                "job_title":    {"type": "string", "description": "Job/role title"},
-                "job_url":      {"type": "string", "description": "Job posting URL if mentioned"},
-                "source":       {"type": "string", "description": "How found: LinkedIn, Naukri, Referral, etc."},
-                "notes":        {"type": "string", "description": "Relevant notes from the email"},
-                "application_date": {"type": "string", "description": "Date in YYYY-MM-DD format, default today"},
-            },
-            "required": ["company_name", "job_title"],
-        },
-    },
-    {
-        "name": "update_application_status",
-        "description": "Update the stage or final result of an existing application. Use when the email is a rejection, offer, shortlisting, or stage update.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "company_name":  {"type": "string", "description": "Company name to find the application"},
-                "job_title":     {"type": "string", "description": "Job title hint to identify the correct application"},
-                "new_stage":     {"type": "string", "enum": ["Applied", "Shortlisted", "Phone Screen", "Technical Round", "HR Round", "Final Round", "Offer", "Accepted", "Rejected", "Withdrawn"]},
-                "final_result":  {"type": "string", "enum": ["Pending", "Selected", "Rejected", "Withdrawn", "Offer Declined"]},
-                "notes":         {"type": "string"},
-            },
-            "required": ["company_name", "new_stage"],
-        },
-    },
-    {
-        "name": "create_interview_round",
-        "description": "Create an interview round when an email schedules or confirms an interview. Extract date/time/link carefully.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "company_name":     {"type": "string"},
-                "job_title":        {"type": "string"},
-                "round_name":       {"type": "string", "description": "e.g. Technical Round 1, HR Interview, Phone Screen"},
-                "scheduled_at":     {"type": "string", "description": "ISO datetime string if mentioned"},
-                "interview_type":   {"type": "string", "enum": ["Video Call", "Phone", "Onsite", "Technical", "HR", "Assignment"]},
-                "meeting_link":     {"type": "string", "description": "Zoom/Meet/Teams link if present"},
-                "interviewer_name": {"type": "string"},
-                "notes":            {"type": "string"},
-            },
-            "required": ["company_name", "round_name"],
-        },
-    },
-    {
-        "name": "create_contact",
-        "description": "Save a recruiter or HR contact. Use when you can extract a real person's name and role from the email.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "name":         {"type": "string"},
-                "email":        {"type": "string"},
-                "company_name": {"type": "string"},
-                "designation":  {"type": "string", "description": "Their job title e.g. HR Manager, Technical Recruiter"},
-                "phone":        {"type": "string"},
-                "linkedin":     {"type": "string"},
-            },
-            "required": ["name", "company_name"],
-        },
-    },
-    {
-        "name": "skip_email",
-        "description": "Skip this email — not related to job search at all (newsletters, OTPs, promotions, system alerts).",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "reason": {"type": "string"},
-            },
-            "required": ["reason"],
-        },
-    },
-    {
-        "name": "flag_for_review",
-        "description": "Flag for manual review when the email is ambiguous or you are unsure what action to take.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "reason":            {"type": "string"},
-                "suggested_action":  {"type": "string"},
-            },
-            "required": ["reason"],
-        },
-    },
-]
+from .ai_provider import call_agent
 
 SYSTEM_PROMPT = """You are an AI assistant that helps track job applications by reading emails.
 
@@ -133,8 +41,10 @@ def process_email_for_user(
     ).first():
         return None
 
-    api_key = get_setting(db, "gemini_api_key")
-    if not api_key:
+    # Check that some provider key is configured
+    provider = get_setting(db, "ai_provider") or "gemini"
+    key_map  = {"gemini": "gemini_api_key", "anthropic": "anthropic_api_key", "openai": "openai_api_key"}
+    if not get_setting(db, key_map.get(provider, "gemini_api_key")):
         return None
 
     # Build context for the model
@@ -165,35 +75,16 @@ def process_email_for_user(
         f"{email.get('body', '')[:3000]}"
     )
 
-    # Call Gemini
+    # Call the configured AI provider
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=system,
-            tools=TOOL_DECLARATIONS,
-        )
-        response = model.generate_content(user_message)
+        tool_calls = call_agent(db, system, user_message)
     except Exception:
         return None
 
-    # Extract function calls from response parts
     logs = []
-    try:
-        parts = response.candidates[0].content.parts
-    except (IndexError, AttributeError):
-        return None
-
-    for part in parts:
-        try:
-            fc = part.function_call
-        except AttributeError:
-            continue
-        if not fc or not fc.name:
-            continue
-
-        tool_name = fc.name
-        args = {k: v for k, v in fc.args.items()}
+    for call in tool_calls:
+        tool_name = call["name"]
+        args      = call["args"]
 
         log = AgentActivityLog(
             user_id=user_id,
