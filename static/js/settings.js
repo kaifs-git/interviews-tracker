@@ -206,16 +206,11 @@ const settingsPage = (() => {
         try { const b = sub.getKey('auth'); if (b) auth = arrayBufferToBase64Url(b); } catch (_) {}
       }
 
-      // DEBUG: show raw subscription info
-      const debugInfo = {
-        hasEndpoint: !!endpoint,
-        endpointPrefix: endpoint ? endpoint.substring(0, 30) : 'NONE',
-        toJsonKeys: JSON.stringify(subJson.keys || null),
-        hasGetKey: typeof sub.getKey === 'function',
-        p256dhLen: p256dh ? p256dh.length : 'MISSING',
-        authLen: auth ? auth.length : 'MISSING',
-      };
-      toast.info('DBG: ' + JSON.stringify(debugInfo), 15000);
+      // DEBUG: show extracted values
+      toast.info(
+        `DBG ep=${!!endpoint} p256dh=${p256dh ? p256dh.length+'ch' : 'MISS'} auth=${auth ? auth.length+'ch' : 'MISS'} getKey=${typeof sub.getKey}`,
+        15000
+      );
 
       if (!endpoint || !p256dh || !auth) {
         toast.error('Could not read subscription keys — try clearing site data and retry.');
