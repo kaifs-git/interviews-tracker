@@ -73,5 +73,26 @@ const api = (() => {
     rejectUser: (id) => request('POST', `/api/admin/users/${id}/reject`),
     toggleUserActive: (id) => request('POST', `/api/admin/users/${id}/toggle-active`),
     deleteAdminUser: (id) => request('DELETE', `/api/admin/users/${id}`),
+    getAdminSettings: () => request('GET', '/api/admin/settings'),
+    updateAdminSettings: (data) => request('PUT', '/api/admin/settings', data),
+    getAdminAgentStats: () => request('GET', '/api/admin/agent-stats'),
+
+    // Email accounts
+    getEmailAccounts: () => request('GET', '/api/email/accounts'),
+    getGmailAuthUrl: () => request('GET', '/api/email/auth/gmail'),
+    deleteEmailAccount: (id) => request('DELETE', `/api/email/accounts/${id}`),
+    triggerEmailSync: () => request('POST', '/api/email/sync'),
+
+    // Agent activity
+    getAgentActivity: (params = {}) => {
+      const qs = new URLSearchParams(Object.entries(params).filter(([,v]) => v)).toString();
+      return request('GET', `/api/agent/activity${qs ? '?' + qs : ''}`);
+    },
+    undoAgentActivity: (id) => request('POST', `/api/agent/activity/${id}/undo`),
+
+    // Push notifications
+    getVapidPublicKey: () => request('GET', '/api/push/vapid-public-key'),
+    subscribePush: (sub) => request('POST', '/api/push/subscribe', sub),
+    unsubscribePush: (endpoint) => request('DELETE', '/api/push/unsubscribe', { endpoint }),
   };
 })();

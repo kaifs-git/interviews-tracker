@@ -2,14 +2,23 @@
 (async () => {
   // Register service worker for PWA
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    const reg = await navigator.serviceWorker.register('/static/sw.js').catch(() => null);
+
+    // Handle navigation messages from push notification clicks
+    if (reg) {
+      navigator.serviceWorker.addEventListener('message', e => {
+        if (e.data?.type === 'NAVIGATE' && e.data.url) {
+          const path = e.data.url.replace(/^.*#/, '');
+          if (path && router) router.navigate(path);
+        }
+      });
+    }
   }
 
   const loggedIn = await auth.init();
   if (loggedIn) {
     router.navigate('dashboard');
 
-    // Fetch pending approval count badge for admin users
     const user = auth.getUser();
     if (user && user.is_admin) {
       try {

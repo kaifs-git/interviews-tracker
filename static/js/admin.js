@@ -1,22 +1,50 @@
-// Admin user management page
+// Admin page — user management + system settings
 const adminPage = (() => {
   let users = [];
+  let activeTab = 'users';
 
   async function render(params = {}) {
-    setPageHeader('User Management', 'Manage user accounts and access');
+    if (params.tab) activeTab = params.tab;
+    setPageHeader('Admin', 'User management & system configuration');
     setPageActions('');
 
     const content = document.getElementById('page-content');
     content.innerHTML = `<div class="flex items-center justify-center py-20"><div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div></div>`;
 
-    try {
-      users = await api.getAdminUsers();
-    } catch (e) {
-      content.innerHTML = `<div class="text-center py-20 text-slate-500">Failed to load users. Admin access required.</div>`;
+    const tabs = `
+      <div class="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
+        <button onclick="adminPage.switchTab('users')"
+          class="admin-tab px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'users' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}">
+          <i class="fa-solid fa-users mr-2"></i>Users
+        </button>
+        <button onclick="adminPage.switchTab('settings')"
+          class="admin-tab px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'settings' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}">
+          <i class="fa-solid fa-sliders mr-2"></i>System Settings
+        </button>
+      </div>
+    `;
+
+    if (activeTab === 'settings') {
+      let settings = {};
+      let stats = {};
+      try {
+        [settings, stats] = await Promise.all([api.getAdminSettings(), api.getAdminAgentStats()]);
+      } catch (e) {
+        content.innerHTML = tabs + `<div class="text-center py-10 text-slate-500">Failed to load settings.</div>`;
+        return;
+      }
+      content.innerHTML = tabs + renderSettings(settings, stats);
       return;
     }
 
-    content.innerHTML = renderList();
+    try {
+      users = await api.getAdminUsers();
+    } catch (e) {
+      content.innerHTML = tabs + `<div class="text-center py-20 text-slate-500">Failed to load users. Admin access required.</div>`;
+      return;
+    }
+
+    content.innerHTML = tabs + renderList();
     refreshPendingBadge();
   }
 
@@ -205,6 +233,140 @@ const adminPage = (() => {
     }
   }
 
+  function switchTab(tab) {
+    activeTab = tab;
+    render();
+  }
+
+  function renderSettings(s, stats) {
+    const interval = s.email_polling_interval_minutes || '15';
+    const agentStats = [
+      { label: 'Applications Created', value: stats.created_applications || 0, icon: 'fa-file-lines', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+      { label: 'Interviews Scheduled', value: stats.created_interviews || 0, icon: 'fa-calendar-check', color: 'text-sky-600', bg: 'bg-sky-50' },
+      { label: 'Contacts Saved', value: stats.created_contacts || 0, icon: 'fa-user-plus', color: 'text-teal-600', bg: 'bg-teal-50' },
+      { label: 'Flagged for Review', value: stats.flagged || 0, icon: 'fa-flag', color: 'text-amber-500', bg: 'bg-amber-50' },
+    ];
+
+    const statsHtml = agentStats.map(s => `
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3">
+        <div class="w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center flex-shrink-0">
+          <i class="fa-solid ${s.icon} ${s.color}"></i>
+        </div>
+        <div>
+          <p class="text-2xl font-bold text-slate-800">${s.value}</p>
+          <p class="text-xs text-slate-500">${s.label}</p>
+        </div>
+      </div>
+    `).join('');
+
+    return `
+      <!-- Agent Stats -->
+      <div class="mb-6">
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Agent Stats (All Users)</h3>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">${statsHtml}</div>
+      </div>
+
+      <!-- Settings form -->
+      <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="font-semibold text-slate-800 text-sm">System Configuration</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Configure API keys and agent behaviour</p>
+        </div>
+        <form onsubmit="adminPage.saveSettings(event)" class="p-5 space-y-5">
+
+          <div class="form-section">Email Agent Polling</div>
+          <div class="form-group">
+            <label class="form-label">Polling Interval (minutes)</label>
+            <div class="flex items-center gap-4">
+              <input type="range" id="polling-range" name="email_polling_interval_minutes"
+                min="5" max="120" step="5" value="${interval}"
+                oninput="document.getElementById('polling-display').textContent = this.value + ' min'"
+                class="flex-1 accent-indigo-600" />
+              <span id="polling-display" class="text-sm font-bold text-indigo-600 w-16 text-right">${interval} min</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">How often the agent checks each connected inbox (5–120 min). Only applies when running as a persistent server (not Vercel).</p>
+          </div>
+
+          <div class="form-section">AI Configuration</div>
+          <div class="form-group">
+            <label class="form-label">Anthropic API Key <span class="text-red-500">*</span></label>
+            <input type="password" name="anthropic_api_key" class="form-input"
+              placeholder="${s.anthropic_api_key_set ? '••••••••••••••••••••••' : 'sk-ant-...'}"
+              autocomplete="off" />
+            <p class="text-xs text-slate-400 mt-1">Required for the AI email agent. Get one at console.anthropic.com</p>
+          </div>
+
+          <div class="form-section">Gmail OAuth</div>
+          <div class="form-group">
+            <label class="form-label">Google Client ID</label>
+            <input type="text" name="google_client_id" class="form-input"
+              placeholder="${s.google_client_id_set ? '••• already set •••' : '123456789.apps.googleusercontent.com'}" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Google Client Secret</label>
+            <input type="password" name="google_client_secret" class="form-input"
+              placeholder="${s.google_client_secret_set ? '••••••••••••••••' : 'GOCSPX-...'}"
+              autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">OAuth Redirect URI</label>
+            <input type="text" name="google_redirect_uri" class="form-input"
+              value="${s.google_redirect_uri || window.location.origin + '/api/email/callback/gmail'}" />
+            <p class="text-xs text-slate-400 mt-1">Add this exact URI to your Google Cloud Console OAuth credentials.</p>
+          </div>
+
+          <div class="form-section">Push Notifications</div>
+          <div class="form-group">
+            <label class="form-label">VAPID Subscriber Email</label>
+            <input type="email" name="vapid_subscriber_email" class="form-input"
+              value="${s.vapid_subscriber_email || ''}"
+              placeholder="admin@yourdomain.com" />
+            <p class="text-xs text-slate-400 mt-1">Contact email for VAPID push notifications (required by spec).</p>
+          </div>
+          ${s.vapid_public_key_set ? `
+            <div class="p-3 bg-emerald-50 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
+              <i class="fa-solid fa-circle-check"></i> VAPID keys are generated and ready.
+            </div>
+          ` : `
+            <div class="p-3 bg-amber-50 rounded-xl text-xs text-amber-700 flex items-center gap-2">
+              <i class="fa-solid fa-triangle-exclamation"></i> VAPID keys will be auto-generated on first server start.
+            </div>
+          `}
+
+          <div class="flex justify-end pt-2">
+            <button type="submit" class="btn-primary">
+              <i class="fa-solid fa-floppy-disk"></i>Save Settings
+            </button>
+          </div>
+        </form>
+      </div>
+    `;
+  }
+
+  async function saveSettings(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = {};
+    form.querySelectorAll('input[name], select[name], textarea[name]').forEach(el => {
+      if (el.value.trim() && !el.value.includes('•')) {
+        data[el.name] = el.name.includes('minutes') ? parseInt(el.value) : el.value.trim();
+      }
+    });
+
+    if (!Object.keys(data).length) {
+      toast.info('No changes to save');
+      return;
+    }
+
+    try {
+      await api.updateAdminSettings(data);
+      toast.success('Settings saved');
+      render({ tab: 'settings' });
+    } catch (e) {
+      toast.error(e.message || 'Failed to save settings');
+    }
+  }
+
   async function refreshPendingBadge() {
     try {
       const data = await api.getPendingCount();
@@ -220,5 +382,5 @@ const adminPage = (() => {
     } catch (_) {}
   }
 
-  return { render, approveUser, rejectUser, toggleActive, confirmDelete, deleteUser };
+  return { render, switchTab, saveSettings, approveUser, rejectUser, toggleActive, confirmDelete, deleteUser };
 })();

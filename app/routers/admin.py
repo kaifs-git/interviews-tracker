@@ -1,10 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict, Any
 from ..dependencies import get_db, get_current_user
 from .. import models, schemas
+from ..models import AgentActivityLog
+from ..services.settings_service import get_all_settings, set_setting
+from ..services.scheduler import update_scheduler_interval
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+SENSITIVE_KEYS = {"anthropic_api_key", "google_client_secret", "vapid_private_key"}
+ALLOWED_SETTING_KEYS = {
+    "anthropic_api_key",
+    "google_client_id",
+    "google_client_secret",
+    "google_redirect_uri",
+    "email_polling_interval_minutes",
+    "vapid_subscriber_email",
+}
 
 
 def require_admin(
@@ -98,3 +111,77 @@ def delete_user(
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
     db.delete(user)
     db.commit()
+
+
+# ── System Settings ────────────────────────────────────────────────────────────
+
+@router.get("/settings")
+def get_settings(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """Return all system settings. Sensitive values are masked."""
+    all_settings = get_all_settings(db)
+    masked = {}
+    for key, value in all_settings.items():
+        if key in SENSITIVE_KEYS and value:
+            masked[key] = "***" + value[-4:] if len(value) > 4 else "****"
+        else:
+            masked[key] = value
+    return masked
+
+
+@router.put("/settings")
+def update_settings(
+    body: Dict[str, Any],
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    """Update system settings. Only allowed keys are accepted."""
+    updated = []
+    for key, value in body.items():
+        if key not in ALLOWED_SETTING_KEYS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Setting key '{key}' is not allowed",
+            )
+        set_setting(db, key, str(value) if value is not None else None)
+        updated.append(key)
+
+    # If polling interval changed, reschedule
+    if "email_polling_interval_minutes" in body:
+        try:
+            minutes = int(body["email_polling_interval_minutes"])
+            update_scheduler_interval(minutes)
+        except (ValueError, TypeError):
+            pass
+
+    return {"updated": updated}
+
+
+# ── Agent Stats ────────────────────────────────────────────────────────────────
+
+@router.get("/agent-stats")
+def get_agent_stats(
+    db: Session = Depends(get_db),
+    _: models.User = Depends(require_admin),
+):
+    """Return aggregate counts of agent activity across all users."""
+    base = db.query(AgentActivityLog)
+    total = base.count()
+    created_applications = base.filter(AgentActivityLog.action_type == "create_application").count()
+    created_interviews = base.filter(AgentActivityLog.action_type == "create_interview_round").count()
+    created_contacts = base.filter(AgentActivityLog.action_type == "create_contact").count()
+    flagged = base.filter(AgentActivityLog.action_type == "flagged").count()
+    errors = base.filter(AgentActivityLog.status == "error").count()
+    skipped = base.filter(AgentActivityLog.action_type == "skipped").count()
+
+    return {
+        "total_processed": total,
+        "created_applications": created_applications,
+        "created_interviews": created_interviews,
+        "created_contacts": created_contacts,
+        "flagged": flagged,
+        "errors": errors,
+        "skipped": skipped,
+    }
