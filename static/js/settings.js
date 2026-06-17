@@ -165,6 +165,13 @@ const settingsPage = (() => {
     }
   }
 
+  function arrayBufferToBase64Url(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    bytes.forEach(b => binary += String.fromCharCode(b));
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
   async function togglePush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
@@ -185,12 +192,12 @@ const settingsPage = (() => {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(public_key),
       });
-      const json = sub.toJSON();
-      await api.subscribePush({
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-      });
+
+      const endpoint = sub.endpoint;
+      const p256dh = arrayBufferToBase64Url(sub.getKey('p256dh'));
+      const auth   = arrayBufferToBase64Url(sub.getKey('auth'));
+
+      await api.subscribePush({ endpoint, p256dh, auth });
       updatePushUI(sub);
       toast.success('Push notifications enabled!');
     } catch (e) {
