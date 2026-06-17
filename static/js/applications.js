@@ -4,19 +4,16 @@ const applicationsPage = (() => {
   let companies = [];
   let filters = {};
 
-  const STAGES = ['Applied','Shortlisted','Phone Screen','Technical Round','HR Round','Final Round','Offer','Accepted','Rejected','Withdrawn'];
-  const RESULTS = ['Pending','Selected','Rejected','Withdrawn','Offer Declined'];
-  const SOURCES = ['LinkedIn','Naukri','Indeed','Company Website','Referral','Job Fair','Recruiter','Other'];
-  const MODES = ['Remote','Hybrid','Onsite'];
-  const TYPES = ['Full-time','Part-time','Contract','Internship','Freelance'];
-  const CURRENCIES = ['INR','USD','EUR','GBP'];
+  const STAGES   = ['Applied','Shortlisted','Phone Screen','Technical Round','HR Round','Final Round','Offer','Accepted','Rejected','Withdrawn'];
+  const RESULTS  = ['Pending','Selected','Rejected','Withdrawn','Offer Declined'];
+  const SOURCES  = ['LinkedIn','Naukri','Indeed','Company Website','Referral','Job Fair','Recruiter','Other'];
+  const MODES    = ['Remote','Hybrid','Onsite'];
+  const TYPES    = ['Full-time','Part-time','Contract','Internship','Freelance'];
 
   async function render(params = {}) {
     filters = params || {};
     setPageHeader('Applications', 'Track all your job applications');
-    setPageActions(`
-      ${btn('New Application', 'applicationsPage.openAddModal()', 'primary', 'fa-plus')}
-    `);
+    setPageActions(btn('Add', 'applicationsPage.openAddModal()', 'primary', 'fa-plus'));
 
     const content = document.getElementById('page-content');
     content.innerHTML = `<div class="flex items-center justify-center py-20"><div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div></div>`;
@@ -40,43 +37,92 @@ const applicationsPage = (() => {
     const badge = document.getElementById('app-count-badge');
     if (badge) {
       const active = applications.filter(a => a.final_result === 'Pending').length;
-      if (active > 0) {
-        badge.textContent = active;
-        badge.classList.remove('hidden');
-      } else {
-        badge.classList.add('hidden');
-      }
+      if (active > 0) { badge.textContent = active; badge.classList.remove('hidden'); }
+      else { badge.classList.add('hidden'); }
     }
   }
 
   function renderFilters() {
     return `
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-5">
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="flex-1 min-w-48 relative">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-3 sm:p-4 mb-4">
+        <div class="flex flex-col sm:flex-row gap-2.5">
+          <div class="flex-1 relative">
             <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-            <input id="search-input" type="text" placeholder="Search role or company..." class="form-input pl-9 py-2"
+            <input id="search-input" type="text" placeholder="Search role or company…"
+              class="form-input pl-9 py-2.5"
               value="${filters.search || ''}" onkeyup="applicationsPage.applyFilter()" />
           </div>
-          <select id="filter-stage" class="form-input w-auto py-2" onchange="applicationsPage.applyFilter()">
-            <option value="">All Stages</option>
-            ${STAGES.map(s => `<option value="${s}" ${filters.stage === s ? 'selected' : ''}>${s}</option>`).join('')}
-          </select>
-          <select id="filter-result" class="form-input w-auto py-2" onchange="applicationsPage.applyFilter()">
-            <option value="">All Results</option>
-            ${RESULTS.map(r => `<option value="${r}" ${filters.result === r ? 'selected' : ''}>${r}</option>`).join('')}
-          </select>
-          <select id="filter-priority" class="form-input w-auto py-2" onchange="applicationsPage.applyFilter()">
-            <option value="">All Priorities</option>
-            ${['High','Medium','Low'].map(p => `<option value="${p}" ${filters.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
-          </select>
-          ${filters.company_id ? `<button onclick="applicationsPage.clearFilters()" class="text-sm text-slate-500 hover:text-red-500 transition-colors"><i class="fa-solid fa-xmark mr-1"></i>Clear</button>` : ''}
+          <div class="grid grid-cols-3 sm:flex gap-2">
+            <select id="filter-stage" class="form-input py-2.5 text-sm" onchange="applicationsPage.applyFilter()">
+              <option value="">All Stages</option>
+              ${STAGES.map(s => `<option value="${s}" ${filters.stage === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+            <select id="filter-result" class="form-input py-2.5 text-sm" onchange="applicationsPage.applyFilter()">
+              <option value="">All Results</option>
+              ${RESULTS.map(r => `<option value="${r}" ${filters.result === r ? 'selected' : ''}>${r}</option>`).join('')}
+            </select>
+            <select id="filter-priority" class="form-input py-2.5 text-sm" onchange="applicationsPage.applyFilter()">
+              <option value="">All Priority</option>
+              ${['High','Medium','Low'].map(p => `<option value="${p}" ${filters.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
+            </select>
+          </div>
+          ${(filters.company_id || filters.search || filters.stage || filters.result || filters.priority) ? `
+            <button onclick="applicationsPage.clearFilters()"
+              class="flex items-center justify-center gap-1.5 px-3 py-2 text-sm text-slate-500 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-lg transition-colors border border-slate-200">
+              <i class="fa-solid fa-xmark"></i><span class="sm:hidden">Clear</span>
+            </button>
+          ` : ''}
         </div>
       </div>
     `;
   }
 
-  function renderList() {
+  function renderMobileCards() {
+    if (!applications.length) {
+      return `<div class="sm:hidden">${emptyState('fa-folder-open', 'No applications found', 'Start by adding your first job application', btn('Add Application', 'applicationsPage.openAddModal()', 'primary', 'fa-plus'))}</div>`;
+    }
+    const cards = applications.map(a => `
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 cursor-pointer active:scale-[0.99] transition-transform"
+        onclick="router.navigate('application-detail', {id:${a.id}})">
+        <div class="flex items-start justify-between mb-2.5">
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <div class="w-10 h-10 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-xl flex items-center justify-center flex-shrink-0 text-sm font-bold text-indigo-600">
+              ${(a.company_name || '?')[0].toUpperCase()}
+            </div>
+            <div class="min-w-0">
+              <p class="font-semibold text-slate-800 text-sm leading-snug truncate">${a.job_title}</p>
+              <p class="text-slate-400 text-xs mt-0.5">${a.company_name || '—'}</p>
+            </div>
+          </div>
+          <div class="flex gap-0.5 ml-2 flex-shrink-0" onclick="event.stopPropagation()">
+            <button onclick="applicationsPage.openEditModal(${a.id})"
+              class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+              <i class="fa-solid fa-pen-to-square text-xs"></i>
+            </button>
+            <button onclick="applicationsPage.confirmDelete(${a.id},'${a.job_title.replace(/'/g,"\\'")}')"
+              class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+              <i class="fa-solid fa-trash text-xs"></i>
+            </button>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-1.5 mb-2.5">
+          ${statusBadge(a.current_stage, a.final_result)}
+          ${a.work_mode ? workModeChip(a.work_mode) : ''}
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-slate-600 font-medium">${formatPay(a.payscale_min, a.payscale_max, a.payscale_currency, a.payscale_type)}</span>
+          <div class="flex items-center gap-2.5 text-slate-400">
+            <span class="${priorityColor(a.priority)} font-medium">${priorityIcon(a.priority)} ${a.priority}</span>
+            <span><i class="fa-solid fa-microphone-lines mr-0.5"></i>${a.interview_count}</span>
+            <span>${formatDate(a.application_date)}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    return `<div class="sm:hidden space-y-3">${cards}</div>`;
+  }
+
+  function renderDesktopTable() {
     const rows = applications.length
       ? applications.map(a => `
         <tr class="cursor-pointer hover:bg-slate-50 transition-colors" onclick="router.navigate('application-detail', {id:${a.id}})">
@@ -94,24 +140,13 @@ const applicationsPage = (() => {
           <td class="px-5 py-4">${statusBadge(a.current_stage, a.final_result)}</td>
           <td class="px-5 py-4">${a.work_mode ? workModeChip(a.work_mode) : '<span class="text-slate-300">—</span>'}</td>
           <td class="px-5 py-4 text-sm text-slate-600">${formatPay(a.payscale_min, a.payscale_max, a.payscale_currency, a.payscale_type)}</td>
-          <td class="px-5 py-4">
-            <div class="flex items-center gap-1 text-sm text-slate-600">
-              <i class="fa-solid fa-microphone-lines text-slate-400 text-xs"></i>
-              ${a.interview_count}
-            </div>
-          </td>
+          <td class="px-5 py-4 text-sm text-slate-600"><i class="fa-solid fa-microphone-lines text-slate-400 text-xs mr-1"></i>${a.interview_count}</td>
           <td class="px-5 py-4 text-sm text-slate-500">${formatDate(a.application_date)}</td>
-          <td class="px-5 py-4">
-            <span class="text-sm ${a.priority === 'High' ? 'priority-high' : a.priority === 'Low' ? 'priority-low' : 'priority-medium'} font-medium">${priorityIcon(a.priority)} ${a.priority}</span>
-          </td>
+          <td class="px-5 py-4 text-sm ${priorityColor(a.priority)} font-medium">${priorityIcon(a.priority)} ${a.priority}</td>
           <td class="px-5 py-4">
             <div class="flex gap-1" onclick="event.stopPropagation()">
-              <button onclick="applicationsPage.openEditModal(${a.id})" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors" title="Edit">
-                <i class="fa-solid fa-pen-to-square text-xs"></i>
-              </button>
-              <button onclick="applicationsPage.confirmDelete(${a.id},'${a.job_title.replace(/'/g,"\\\'")}')" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Delete">
-                <i class="fa-solid fa-trash text-xs"></i>
-              </button>
+              <button onclick="applicationsPage.openEditModal(${a.id})" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"><i class="fa-solid fa-pen-to-square text-xs"></i></button>
+              <button onclick="applicationsPage.confirmDelete(${a.id},'${a.job_title.replace(/'/g,"\\'")}')" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
             </div>
           </td>
         </tr>
@@ -124,39 +159,36 @@ const applicationsPage = (() => {
         </div></td></tr>`;
 
     return `
-      ${renderFilters()}
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+      <div class="hidden sm:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="px-5 py-3.5 border-b border-slate-100">
           <p class="text-sm text-slate-500">${applications.length} application${applications.length !== 1 ? 's' : ''}</p>
         </div>
         <div class="overflow-x-auto">
           <table class="data-table">
             <thead>
               <tr>
-                <th>Role / Company</th>
-                <th>Status</th>
-                <th>Mode</th>
-                <th>Pay Range</th>
-                <th>Interviews</th>
-                <th>Applied</th>
-                <th>Priority</th>
-                <th></th>
+                <th>Role / Company</th><th>Status</th><th>Mode</th>
+                <th>Pay Range</th><th>Interviews</th><th>Applied</th>
+                <th>Priority</th><th></th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
           </table>
         </div>
-      </div>
-    `;
+      </div>`;
+  }
+
+  function renderList() {
+    const countLine = `<p class="text-xs text-slate-400 mb-3 sm:hidden">${applications.length} application${applications.length !== 1 ? 's' : ''}</p>`;
+    return renderFilters() + countLine + renderMobileCards() + renderDesktopTable();
   }
 
   function applyFilter() {
-    const search = document.getElementById('search-input')?.value || '';
-    const stage = document.getElementById('filter-stage')?.value || '';
-    const result = document.getElementById('filter-result')?.value || '';
+    const search   = document.getElementById('search-input')?.value || '';
+    const stage    = document.getElementById('filter-stage')?.value || '';
+    const result   = document.getElementById('filter-result')?.value || '';
     const priority = document.getElementById('filter-priority')?.value || '';
     filters = { ...filters, search, stage, result, priority };
-    // Re-fetch with filters
     api.getApplications(filters).then(data => {
       applications = data;
       const content = document.getElementById('page-content');
@@ -164,53 +196,74 @@ const applicationsPage = (() => {
     }).catch(() => {});
   }
 
-  function clearFilters() {
-    filters = {};
-    render({});
-  }
+  function clearFilters() { filters = {}; render({}); }
 
   function appForm(a = {}) {
     const companyOptions = companies.map(c => ({ value: c.id, label: c.name }));
     const today = new Date().toISOString().split('T')[0];
-
     return `
       <form id="app-form">
-        <div class="grid grid-cols-2 gap-x-5">
-          ${field('Company', 'company_id', 'select', a.company_id, { required: true, options: companyOptions })}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5">
+          ${searchableSelect('Company', 'company_id', a.company_id, companyOptions, true)}
           ${field('Job Title', 'job_title', 'text', a.job_title, { required: true, placeholder: 'e.g. Senior Software Engineer' })}
         </div>
-        ${field('Job Description', 'job_description', 'textarea', a.job_description, { placeholder: 'Paste the JD or add key points...', rows: 4 })}
-        <div class="grid grid-cols-3 gap-x-5">
+        ${field('Job Description', 'job_description', 'textarea', a.job_description, { placeholder: 'Paste the JD or add key points…', rows: 3 })}
+
+        <div class="form-section-divider">Compensation</div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-5">
           ${field('Pay Min', 'payscale_min', 'number', a.payscale_min, { placeholder: '800000' })}
           ${field('Pay Max', 'payscale_max', 'number', a.payscale_max, { placeholder: '1200000' })}
-          ${field('Currency', 'payscale_currency', 'select', a.payscale_currency || 'INR', { options: CURRENCIES })}
-        </div>
-        <div class="grid grid-cols-3 gap-x-5">
           ${field('Pay Type', 'payscale_type', 'select', a.payscale_type || 'Annual', { options: ['Annual','Monthly'] })}
-          ${field('Work Mode', 'work_mode', 'select', a.work_mode, { options: MODES })}
-          ${field('Job Type', 'job_type', 'select', a.job_type, { options: TYPES })}
         </div>
-        <div class="grid grid-cols-2 gap-x-5">
+        ${pillSelect('Currency', 'payscale_currency', a.payscale_currency || 'INR', [
+          { value:'INR', label:'₹ INR', active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+          { value:'USD', label:'$ USD', active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+          { value:'EUR', label:'€ EUR', active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+          { value:'GBP', label:'£ GBP', active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+        ])}
+
+        <div class="form-section-divider">Job Details</div>
+        ${pillSelect('Work Mode', 'work_mode', a.work_mode, [
+          { value:'Remote', label:'🌐 Remote', active:'bg-teal-600 text-white',    color:'bg-slate-100 text-slate-600' },
+          { value:'Hybrid', label:'🔀 Hybrid', active:'bg-violet-600 text-white',  color:'bg-slate-100 text-slate-600' },
+          { value:'Onsite', label:'🏢 Onsite', active:'bg-orange-500 text-white',  color:'bg-slate-100 text-slate-600' },
+        ])}
+        ${pillSelect('Job Type', 'job_type', a.job_type, [
+          { value:'Full-time',  label:'Full-time',  active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+          { value:'Part-time',  label:'Part-time',  active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+          { value:'Contract',   label:'Contract',   active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+          { value:'Internship', label:'Internship', active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+          { value:'Freelance',  label:'Freelance',  active:'bg-indigo-600 text-white', color:'bg-slate-100 text-slate-600' },
+        ])}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5">
           ${field('Location', 'location', 'text', a.location, { placeholder: 'City, State' })}
           ${field('Experience Required', 'experience_required', 'text', a.experience_required, { placeholder: '3–5 years' })}
         </div>
-        <div class="grid grid-cols-2 gap-x-5">
+
+        <div class="form-section-divider">Application</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5">
           ${field('Applied Date', 'application_date', 'date', a.application_date || today)}
           ${field('Source', 'source', 'select', a.source, { options: SOURCES })}
         </div>
-        <div class="grid grid-cols-2 gap-x-5">
-          ${field('Current Stage', 'current_stage', 'select', a.current_stage || 'Applied', { options: STAGES })}
-          ${field('Priority', 'priority', 'select', a.priority || 'Medium', { options: ['High','Medium','Low'] })}
-        </div>
-        ${field('Job URL', 'job_url', 'url', a.job_url, { placeholder: 'https://...' })}
+        ${field('Job URL', 'job_url', 'url', a.job_url, { placeholder: 'https://…' })}
         ${field('Referral Name', 'referral_name', 'text', a.referral_name, { placeholder: 'Who referred you?' })}
-        ${field('Notes', 'notes', 'textarea', a.notes, { placeholder: 'Additional notes...', rows: 2 })}
+
+        <div class="form-section-divider">Status</div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5">
+          ${field('Current Stage', 'current_stage', 'select', a.current_stage || 'Applied', { options: STAGES })}
+          ${field('Final Result', 'final_result', 'select', a.final_result || 'Pending', { options: RESULTS })}
+        </div>
+        ${pillSelect('Priority', 'priority', a.priority || 'Medium', [
+          { value:'High',   label:'🔴 High',   active:'bg-red-500 text-white',     color:'bg-slate-100 text-slate-600' },
+          { value:'Medium', label:'🟡 Medium', active:'bg-amber-500 text-white',   color:'bg-slate-100 text-slate-600' },
+          { value:'Low',    label:'🟢 Low',    active:'bg-emerald-600 text-white', color:'bg-slate-100 text-slate-600' },
+        ])}
+        ${field('Notes', 'notes', 'textarea', a.notes, { placeholder: 'Additional notes…', rows: 2 })}
       </form>
     `;
   }
 
   async function openAddModal() {
-    // Load companies if not already loaded (e.g. opened from dashboard shortcut)
     if (!companies.length) {
       try { companies = await api.getCompanies(); } catch (_) {}
     }
@@ -224,11 +277,11 @@ const applicationsPage = (() => {
       return;
     }
     modal.open({
-      title: 'New Job Application',
+      title: 'New Application',
       body: appForm(),
       footer: `
-        <button onclick="modal.close()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">Cancel</button>
-        <button onclick="applicationsPage.submitCreate()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+        <button onclick="modal.close()" class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800">Cancel</button>
+        <button onclick="applicationsPage.submitCreate()" class="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
           <i class="fa-solid fa-plus mr-1"></i>Add Application
         </button>
       `,
@@ -239,10 +292,7 @@ const applicationsPage = (() => {
   async function openEditModal(id) {
     let a;
     try {
-      // Ensure companies are loaded (may be empty if opened from detail page)
-      if (!companies.length) {
-        companies = await api.getCompanies();
-      }
+      if (!companies.length) companies = await api.getCompanies();
       a = await api.getApplication(id);
     } catch (e) {
       toast.error('Failed to load application');
@@ -252,8 +302,8 @@ const applicationsPage = (() => {
       title: 'Edit Application',
       body: appForm(a),
       footer: `
-        <button onclick="modal.close()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors">Cancel</button>
-        <button onclick="applicationsPage.submitUpdate(${id})" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
+        <button onclick="modal.close()" class="px-4 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-800">Cancel</button>
+        <button onclick="applicationsPage.submitUpdate(${id})" class="px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">
           Save Changes
         </button>
       `,
@@ -266,7 +316,7 @@ const applicationsPage = (() => {
     if (!form) return;
     const data = getFormData(form);
     if (!data.company_id) { toast.warning('Please select a company'); return; }
-    if (!data.job_title) { toast.warning('Job title is required'); return; }
+    if (!data.job_title)  { toast.warning('Job title is required'); return; }
     if (data.company_id) data.company_id = parseInt(data.company_id);
     try {
       const app = await api.createApplication(data);
@@ -291,7 +341,6 @@ const applicationsPage = (() => {
       if (idx !== -1) applications[idx] = updated;
       modal.close();
       toast.success('Application updated');
-      // If we're on the detail page, refresh it — don't replace with the list
       if (router.getCurrentPage() === 'application-detail') {
         applicationDetailPage.render({ id });
       } else {

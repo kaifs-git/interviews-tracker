@@ -197,3 +197,18 @@
   button, a, [role="button"] { min-height: 36px; }
   .data-table td { padding: 0.625rem 0.75rem; }
 }
+
+/* Form section divider */
+.form-section-divider {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #94a3b8;
+  padding: 1rem 0 0.5rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Searchable select dropdown */
+#ss-company_id-drop, [id$="-drop"] { z-index: 100; }
