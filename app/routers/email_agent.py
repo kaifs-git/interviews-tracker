@@ -193,16 +193,21 @@ def trigger_email_sync(
         .filter_by(user_id=current_user.id, is_active=True)
         .all()
     )
+    if not accounts:
+        raise HTTPException(status_code=400, detail="No connected email accounts found")
+
     synced = 0
+    emails_found = 0
     errors = []
     for account in accounts:
         try:
-            _sync_account(db, account)
+            result = _sync_account(db, account)
             synced += 1
+            emails_found += result.get("emails_found", 0) if result else 0
         except Exception as e:
-            errors.append({"account_id": account.id, "error": str(e)})
+            errors.append({"account": account.email_address, "error": str(e)})
 
-    return {"synced": synced, "errors": errors}
+    return {"accounts_synced": synced, "emails_found": emails_found, "errors": errors}
 
 
 # ── Vercel Cron endpoint ───────────────────────────────────────────────────────

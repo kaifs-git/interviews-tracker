@@ -1,6 +1,9 @@
 import json
+import logging
 from datetime import datetime, date
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from ..models import JobApplication, Company, Contact, InterviewRound, AgentActivityLog, EmailAccount
 from .settings_service import get_setting
@@ -45,6 +48,7 @@ def process_email_for_user(
     provider = get_setting(db, "ai_provider") or "gemini"
     key_map  = {"gemini": "gemini_api_key", "anthropic": "anthropic_api_key", "openai": "openai_api_key"}
     if not get_setting(db, key_map.get(provider, "gemini_api_key")):
+        logger.warning("Email agent: no API key configured for provider '%s', skipping email %s", provider, email.get("message_id"))
         return None
 
     # Build context for the model
@@ -78,8 +82,22 @@ def process_email_for_user(
     # Call the configured AI provider
     try:
         tool_calls = call_agent(db, system, user_message)
-    except Exception:
-        return None
+    except Exception as exc:
+        logger.error("Email agent: AI call failed for email %s: %s", email.get("message_id"), exc)
+        error_log = AgentActivityLog(
+            user_id=user_id,
+            email_account_id=email_account.id,
+            email_message_id=email["message_id"],
+            email_subject=email.get("subject", ""),
+            email_from=email.get("from_email", ""),
+            email_date=email.get("date"),
+            action_type="error",
+            summary=f"AI error: {exc}",
+            status="error",
+        )
+        db.add(error_log)
+        db.commit()
+        return error_log
 
     logs = []
     for call in tool_calls:

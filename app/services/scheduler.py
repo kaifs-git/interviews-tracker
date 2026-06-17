@@ -25,7 +25,7 @@ def run_email_sync_for_all_users():
         db.close()
 
 
-def _sync_account(db: Session, account: EmailAccount):
+def _sync_account(db: Session, account: EmailAccount) -> dict:
     # Refresh token if needed
     if account.token_expiry and account.token_expiry < datetime.utcnow() + timedelta(minutes=5):
         tokens = refresh_access_token_if_needed(account.refresh_token)
@@ -40,13 +40,16 @@ def _sync_account(db: Session, account: EmailAccount):
         max_results=20,
     )
 
-    for email in result["emails"]:
+    emails = result["emails"]
+    logger.info("Syncing account %s: found %d emails", account.email_address, len(emails))
+    for email in emails:
         process_email_for_user(db, account.user_id, account, email)
 
     account.last_synced_at = datetime.utcnow()
     if result.get("new_history_id"):
         account.history_id = result["new_history_id"]
     db.commit()
+    return {"emails_found": len(emails)}
 
 
 _scheduler = None

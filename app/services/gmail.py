@@ -270,13 +270,13 @@ def fetch_new_emails(
             last_history_id = None
 
     if not last_history_id:
-        # Initial sync — fetch recent unread emails
+        # Initial sync — fetch recent emails (read or unread) from the past 7 days
         list_response = (
             service.users()
             .messages()
             .list(
                 userId="me",
-                q="is:unread newer_than:1d",
+                q="newer_than:7d",
                 maxResults=max_results,
             )
             .execute()
