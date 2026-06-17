@@ -1,38 +1,21 @@
 import logging
 import base64
 import re
-from datetime import datetime, timezone
+import urllib.parse
+import requests as _requests
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 GMAIL_SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 DEFAULT_REDIRECT_URI = "http://localhost:8000/api/email/callback/gmail"
-
-
-def _get_flow(client_id: str, client_secret: str, redirect_uri: str):
-    """Build a google_auth_oauthlib Flow from client credentials."""
-    from google_auth_oauthlib.flow import Flow
-
-    client_config = {
-        "web": {
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [redirect_uri],
-        }
-    }
-    flow = Flow.from_client_config(
-        client_config,
-        scopes=GMAIL_SCOPES,
-        redirect_uri=redirect_uri,
-    )
-    return flow
+_GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 
 
 def get_gmail_auth_url(db, state: str) -> str:
-    """Build the Google OAuth2 authorization URL."""
+    """Build the Google OAuth2 authorization URL without PKCE (stateless-safe)."""
     from .settings_service import get_setting
 
     client_id = get_setting(db, "google_client_id")
@@ -42,37 +25,65 @@ def get_gmail_auth_url(db, state: str) -> str:
     if not client_id or not client_secret:
         raise ValueError("Google OAuth credentials not configured in system settings")
 
-    flow = _get_flow(client_id, client_secret, redirect_uri)
-    auth_url, _ = flow.authorization_url(
-        access_type="offline",
-        include_granted_scopes="true",
-        state=state,
-        prompt="consent",
-    )
-    return auth_url
+    params = {
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(GMAIL_SCOPES),
+        "access_type": "offline",
+        "prompt": "consent",
+        "state": state,
+        "include_granted_scopes": "true",
+    }
+    return _GOOGLE_AUTH_URL + "?" + urllib.parse.urlencode(params)
 
 
 def exchange_code(db, code: str, state: str) -> dict:
-    """Exchange an authorization code for tokens. Returns access_token, refresh_token, expiry, email."""
+    """
+    Exchange an authorization code for tokens via a direct POST (no PKCE).
+    Returns access_token, refresh_token, expiry, email.
+    """
     from .settings_service import get_setting
 
     client_id = get_setting(db, "google_client_id")
     client_secret = get_setting(db, "google_client_secret")
     redirect_uri = get_setting(db, "google_redirect_uri", DEFAULT_REDIRECT_URI)
 
-    flow = _get_flow(client_id, client_secret, redirect_uri)
-    flow.fetch_token(code=code)
+    resp = _requests.post(
+        _GOOGLE_TOKEN_URL,
+        data={
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        },
+    )
+    resp.raise_for_status()
+    token_data = resp.json()
 
-    credentials = flow.credentials
-    email = _get_email_from_credentials(credentials)
+    access_token = token_data["access_token"]
+    refresh_token = token_data.get("refresh_token")
 
-    expiry = credentials.expiry
-    if expiry and expiry.tzinfo is not None:
-        expiry = expiry.replace(tzinfo=None)
+    expiry = None
+    expires_in = token_data.get("expires_in")
+    if expires_in:
+        expiry = datetime.utcnow() + timedelta(seconds=int(expires_in))
+
+    from google.oauth2.credentials import Credentials
+    creds = Credentials(
+        token=access_token,
+        refresh_token=refresh_token,
+        token_uri=_GOOGLE_TOKEN_URL,
+        client_id=client_id,
+        client_secret=client_secret,
+        scopes=GMAIL_SCOPES,
+    )
+    email = _get_email_from_credentials(creds)
 
     return {
-        "access_token": credentials.token,
-        "refresh_token": credentials.refresh_token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "expiry": expiry,
         "email": email,
     }
