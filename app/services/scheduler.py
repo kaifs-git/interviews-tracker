@@ -39,6 +39,10 @@ def run_email_sync_for_all_users():
 
 def _sync_account(db: Session, account: EmailAccount, since_minutes: int) -> dict:
     """Fetch emails from the last `since_minutes` minutes and process new ones."""
+    # First-ever sync: look back 7 days to catch recent job emails
+    if not account.last_synced_at:
+        since_minutes = 60 * 24 * 7
+
     # Refresh token if close to expiry
     if account.token_expiry and account.token_expiry < datetime.utcnow() + timedelta(minutes=5):
         client_id = get_setting(db, "google_client_id")

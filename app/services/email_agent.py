@@ -55,7 +55,20 @@ def process_email_for_user(
     key_map  = {"gemini": "gemini_api_key", "anthropic": "anthropic_api_key", "openai": "openai_api_key", "groq": "groq_api_key"}
     if not get_setting(db, key_map.get(provider, "gemini_api_key")):
         logger.warning("Email agent: no API key configured for provider '%s', skipping email %s", provider, email.get("message_id"))
-        return None
+        error_log = AgentActivityLog(
+            user_id=user_id,
+            email_account_id=email_account.id,
+            email_message_id=email["message_id"],
+            email_subject=email.get("subject", ""),
+            email_from=email.get("from_email", ""),
+            email_date=email.get("date"),
+            action_type="error",
+            summary=f"No API key for provider '{provider}'. Go to Admin → Settings to add your key.",
+            status="error",
+        )
+        db.add(error_log)
+        db.commit()
+        return error_log
 
     # Build context for the model
     companies    = db.query(Company).filter_by(user_id=user_id).all()

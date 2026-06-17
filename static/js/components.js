@@ -222,16 +222,20 @@ function starRating(rating, max = 5) {
   return html;
 }
 
+function _utc(s) {
+  // Python datetime.isoformat() has no 'Z' — append it so JS parses as UTC not local
+  if (!s) return s;
+  return (!s.endsWith('Z') && !s.includes('+')) ? s + 'Z' : s;
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(_utc(dateStr)).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatDateTime(dateStr) {
   if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(_utc(dateStr)).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function formatPay(min, max, currency = 'INR', type = 'Annual') {

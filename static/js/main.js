@@ -43,5 +43,13 @@
         }
       } catch (_) {}
     }
+
+    // Auto-sync emails on page load, throttled to at most once per 15 min per session
+    const SYNC_KEY = 'lastAutoSync';
+    const lastSync = parseInt(localStorage.getItem(SYNC_KEY) || '0');
+    if (Date.now() - lastSync > 15 * 60 * 1000) {
+      localStorage.setItem(SYNC_KEY, Date.now());
+      api.triggerEmailSync().catch(() => {});
+    }
   }
 })();
