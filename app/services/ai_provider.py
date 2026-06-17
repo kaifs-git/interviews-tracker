@@ -129,30 +129,62 @@ def call_agent(db: Session, system: str, user_message: str) -> list[dict]:
 
 # ─── Gemini ───────────────────────────────────────────────────────────────────
 
+def _build_gemini_tools():
+    """Convert canonical tool defs to google-genai types.Tool."""
+    from google.genai import types
+
+    TYPE_MAP = {
+        "string": "STRING", "number": "NUMBER", "integer": "INTEGER",
+        "boolean": "BOOLEAN", "array": "ARRAY", "object": "OBJECT",
+    }
+
+    def _schema(d: dict) -> types.Schema:
+        kwargs = {"type": TYPE_MAP.get(d.get("type", "string"), "STRING")}
+        if "description" in d:
+            kwargs["description"] = d["description"]
+        if "enum" in d:
+            kwargs["enum"] = d["enum"]
+        if "properties" in d:
+            kwargs["properties"] = {k: _schema(v) for k, v in d["properties"].items()}
+        if "required" in d:
+            kwargs["required"] = d["required"]
+        return types.Schema(**kwargs)
+
+    declarations = [
+        types.FunctionDeclaration(
+            name=t["name"],
+            description=t["description"],
+            parameters=_schema(t["parameters"]),
+        )
+        for t in TOOL_DEFINITIONS
+    ]
+    return [types.Tool(function_declarations=declarations)]
+
+
 def _call_gemini(db: Session, system: str, user_message: str, model: str) -> list[dict]:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
 
     api_key = get_setting(db, "gemini_api_key")
     if not api_key:
         raise ValueError("Gemini API key not configured")
 
-    genai.configure(api_key=api_key)
-    m = genai.GenerativeModel(
-        model_name=model,
-        system_instruction=system,
-        tools=TOOL_DEFINITIONS,        # SDK accepts OpenAPI dicts directly
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=model,
+        contents=user_message,
+        config=types.GenerateContentConfig(
+            system_instruction=system,
+            tools=_build_gemini_tools(),
+        ),
     )
-    response = m.generate_content(user_message)
 
     results = []
     try:
         for part in response.candidates[0].content.parts:
-            try:
-                fc = part.function_call
-                if fc and fc.name:
-                    results.append({"name": fc.name, "args": dict(fc.args)})
-            except AttributeError:
-                pass
+            fc = getattr(part, "function_call", None)
+            if fc and getattr(fc, "name", None):
+                results.append({"name": fc.name, "args": dict(fc.args)})
     except (IndexError, AttributeError):
         pass
     return results
