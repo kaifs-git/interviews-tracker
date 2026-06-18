@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from ..database import get_db
-from ..auth import get_current_user
+from ..dependencies import get_db, get_current_user
 from ..models import EmailBlacklist, User
 
 router = APIRouter(prefix="/api/email/blacklist", tags=["blacklist"])
