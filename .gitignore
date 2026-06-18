@@ -220,3 +220,6 @@ __marimo__/
 # App-specific
 data/
 .env
+
+# Claude Code
+.claude/
