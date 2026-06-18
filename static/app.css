@@ -5,6 +5,18 @@
 
 body { font-family: 'Inter', system-ui, sans-serif; }
 
+/* ── Hide scrollbar for filter pills row ─────────────────────── */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ── Line clamp ───────────────────────────────────────────────── */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* ── Scrollbar ────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -403,3 +415,89 @@ html.dark .ss-option:hover { background: #312e81; color: #a5b4fc; }
 
 /* ── Stat card ────────────────────────────────────────────────── */
 .stat-card { border-radius: 16px; padding: 1.25rem; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Dark mode — global overrides for dynamically generated page HTML
+   Cards, borders, text all auto-adapt when html.dark is set.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Card backgrounds */
+html.dark #page-content .bg-white {
+  background-color: #1e293b;
+}
+html.dark #page-content .bg-slate-50 {
+  background-color: #0f172a;
+}
+html.dark #page-content .bg-indigo-50 {
+  background-color: rgba(49, 46, 129, 0.35);
+}
+html.dark #page-content .bg-amber-50 {
+  background-color: rgba(120, 53, 15, 0.25);
+}
+html.dark #page-content .bg-red-50 {
+  background-color: rgba(127, 29, 29, 0.25);
+}
+html.dark #page-content .bg-emerald-50 {
+  background-color: rgba(6, 78, 59, 0.25);
+}
+html.dark #page-content .bg-slate-100 {
+  background-color: #334155;
+}
+
+/* Borders */
+html.dark #page-content .border-slate-100 {
+  border-color: #334155;
+}
+html.dark #page-content .border-slate-50 {
+  border-color: #1e293b;
+}
+html.dark #page-content .border-slate-200 {
+  border-color: #334155;
+}
+
+/* Primary text — dark on white in light mode → light on dark in dark mode */
+html.dark #page-content .text-slate-800 {
+  color: #e2e8f0;
+}
+html.dark #page-content .text-slate-700 {
+  color: #cbd5e1;
+}
+html.dark #page-content .text-slate-600 {
+  color: #94a3b8;
+}
+html.dark #page-content .text-slate-500 {
+  color: #64748b;
+}
+
+/* Accent text — keep readable */
+html.dark #page-content .text-indigo-700 {
+  color: #a5b4fc;
+}
+html.dark #page-content .text-indigo-600 {
+  color: #818cf8;
+}
+html.dark #page-content .text-emerald-700 {
+  color: #34d399;
+}
+html.dark #page-content .text-emerald-600 {
+  color: #10b981;
+}
+
+/* Badge bg overrides */
+html.dark #page-content .bg-emerald-100 {
+  background-color: rgba(6, 78, 59, 0.35);
+}
+html.dark #page-content .bg-indigo-100 {
+  background-color: rgba(49, 46, 129, 0.35);
+}
+
+/* Input overrides inside modals (dark mode) */
+html.dark #modal-body .bg-white {
+  background-color: #1e293b;
+}
+html.dark #modal-body .border-slate-100 {
+  border-color: #334155;
+}
+html.dark #modal-body .text-slate-800 { color: #e2e8f0; }
+html.dark #modal-body .text-slate-700 { color: #cbd5e1; }
+html.dark #modal-body .text-slate-600 { color: #94a3b8; }

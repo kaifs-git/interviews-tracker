@@ -22,84 +22,86 @@ const settingsPage = (() => {
 
     const accountsHtml = accounts.length
       ? accounts.map(a => `
-        <div class="flex items-center gap-3 py-3 border-b border-slate-50 last:border-0">
+        <div class="flex items-center gap-3 py-3 border-b border-slate-100 dark:border-slate-700 last:border-0">
           <div class="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center flex-shrink-0">
             <i class="fa-brands fa-google text-red-500 text-base"></i>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-semibold text-slate-800 truncate">${a.email_address}</p>
-            <p class="text-xs text-slate-400 mt-0.5">
+            <p class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">${a.email_address}</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
               ${a.last_synced_at ? 'Last synced ' + formatDateTime(a.last_synced_at) : 'Never synced'}
               · <span class="${a.is_active ? 'text-emerald-500' : 'text-slate-400'}">${a.is_active ? 'Active' : 'Inactive'}</span>
             </p>
           </div>
           <div class="flex items-center gap-1.5">
-            <button onclick="settingsPage.syncNow()" class="btn-ghost text-xs px-2.5 py-1.5">
-              <i class="fa-solid fa-rotate text-xs"></i><span class="hidden sm:inline">Sync</span>
+            <button onclick="settingsPage.syncNow(event)" class="btn-ghost text-xs px-2.5 py-1.5">
+              <i class="fa-solid fa-rotate text-xs"></i><span class="hidden sm:inline ml-1">Sync</span>
             </button>
-            <button onclick="settingsPage.disconnectAccount(${a.id})" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+            <button onclick="settingsPage.disconnectAccount(${a.id})" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
               <i class="fa-solid fa-trash text-sm"></i>
             </button>
           </div>
         </div>
       `).join('')
-      : `<div class="py-6 text-center text-slate-400 text-sm">No email accounts connected yet.</div>`;
+      : `<div class="py-6 text-center text-slate-400 dark:text-slate-500 text-sm">No email accounts connected yet.</div>`;
 
     return `
-      <div class="max-w-2xl mx-auto space-y-5">
+      <div class="max-w-2xl mx-auto space-y-4">
 
         <!-- Email Agent -->
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center">
                 <i class="fa-solid fa-robot text-indigo-600 text-base"></i>
               </div>
               <div>
-                <h3 class="font-semibold text-slate-800 text-sm">Email Agent</h3>
+                <h3 class="font-semibold text-slate-800 dark:text-slate-100 text-sm">Email Agent</h3>
                 <p class="text-slate-400 text-xs">Auto-track applications from your inbox</p>
               </div>
             </div>
-            <span id="agent-status-badge" class="badge ${accounts.length ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}">
+            <span class="badge ${accounts.length
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400'
+              : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}">
               ${accounts.length ? 'Connected' : 'Not set up'}
             </span>
           </div>
 
-          <!-- Connected accounts list -->
           <div class="px-5">${accountsHtml}</div>
 
-          <!-- Connect button -->
-          <div class="px-5 pb-5 pt-2">
-            <button onclick="settingsPage.connectGmail()" class="btn-secondary w-full justify-center gap-2.5">
-              <div class="w-4 h-4 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" class="w-4 h-4"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-              </div>
+          <div class="px-5 pb-5 pt-3">
+            <button onclick="settingsPage.connectGmail()" class="btn-secondary w-full justify-center gap-2.5 py-2.5">
+              <svg viewBox="0 0 24 24" class="w-4 h-4 flex-shrink-0">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
               Connect Gmail Account
             </button>
           </div>
 
-          <!-- How it works -->
-          <div class="mx-5 mb-5 p-4 bg-indigo-50 rounded-xl">
-            <p class="text-xs font-semibold text-indigo-700 mb-2">How the agent works</p>
-            <ul class="space-y-1.5 text-xs text-indigo-600">
+          <div class="mx-5 mb-5 p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
+            <p class="text-xs font-semibold text-indigo-700 dark:text-indigo-300 mb-2">How the agent works</p>
+            <ul class="space-y-1.5 text-xs text-indigo-600 dark:text-indigo-400">
               <li class="flex items-start gap-2"><i class="fa-solid fa-envelope-open-text mt-0.5 flex-shrink-0"></i> Reads new emails from your connected inbox</li>
-              <li class="flex items-start gap-2"><i class="fa-solid fa-brain mt-0.5 flex-shrink-0"></i> Uses AI to detect job applications, interviews &amp; rejections</li>
+              <li class="flex items-start gap-2"><i class="fa-solid fa-brain mt-0.5 flex-shrink-0"></i> Uses AI to detect applications, interviews &amp; rejections</li>
               <li class="flex items-start gap-2"><i class="fa-solid fa-database mt-0.5 flex-shrink-0"></i> Automatically adds them to your tracker</li>
-              <li class="flex items-start gap-2"><i class="fa-solid fa-bell mt-0.5 flex-shrink-0"></i> Sends you a push notification for each action</li>
+              <li class="flex items-start gap-2"><i class="fa-solid fa-bell mt-0.5 flex-shrink-0"></i> Sends a push notification for each action</li>
             </ul>
           </div>
         </div>
 
         <!-- Push Notifications -->
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-100">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center">
                   <i class="fa-solid fa-bell text-amber-500 text-base"></i>
                 </div>
                 <div>
-                  <h3 class="font-semibold text-slate-800 text-sm">Push Notifications</h3>
+                  <h3 class="font-semibold text-slate-800 dark:text-slate-100 text-sm">Push Notifications</h3>
                   <p class="text-slate-400 text-xs">Get notified when the agent acts</p>
                 </div>
               </div>
@@ -107,11 +109,11 @@ const settingsPage = (() => {
                 ? `<button id="push-toggle-btn" onclick="settingsPage.togglePush()" class="btn-secondary text-xs px-3 py-1.5">
                     <i class="fa-solid fa-bell-slash mr-1.5"></i>Enable
                   </button>`
-                : `<span class="badge bg-slate-100 text-slate-500">Not supported</span>`
+                : `<span class="badge bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400">Not supported</span>`
               }
             </div>
           </div>
-          <div id="push-status-area" class="px-5 py-4 text-sm text-slate-500">
+          <div id="push-status-area" class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">
             ${!pushSupported
               ? 'Push notifications are not supported in this browser. Install the app (PWA) for full notification support.'
               : 'Click Enable to receive push notifications when the email agent adds or updates data.'
@@ -120,42 +122,44 @@ const settingsPage = (() => {
         </div>
 
         <!-- Email Blacklist -->
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-slate-100">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-700">
             <div class="flex items-center gap-3">
               <div class="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center">
                 <i class="fa-solid fa-ban text-red-500 text-base"></i>
               </div>
               <div>
-                <h3 class="font-semibold text-slate-800 text-sm">Email Blacklist</h3>
-                <p class="text-slate-400 text-xs">Emails from these addresses/domains will be skipped</p>
+                <h3 class="font-semibold text-slate-800 dark:text-slate-100 text-sm">Email Blacklist</h3>
+                <p class="text-slate-400 text-xs">Skip emails from these addresses/domains</p>
               </div>
             </div>
           </div>
           <div class="px-5 py-4 space-y-3">
-            <div id="blacklist-items"><!-- loaded dynamically --></div>
+            <div id="blacklist-items"></div>
             <div class="flex gap-2">
               <input id="blacklist-input" type="text" placeholder="email@example.com or @domain.com"
-                class="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-400" />
-              <button onclick="settingsPage.addBlacklistEntry()" class="btn-primary text-xs px-4">Add</button>
+                class="form-input flex-1" />
+              <button onclick="settingsPage.addBlacklistEntry()" class="btn-primary text-xs px-4 flex-shrink-0">Add</button>
             </div>
-            <p class="text-xs text-slate-400">Use @domain.com to block all emails from a domain</p>
+            <p class="text-xs text-slate-400 dark:text-slate-500">
+              Use <code class="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded text-[11px]">@domain.com</code> to block all emails from a domain
+            </p>
           </div>
         </div>
 
         <!-- Agent Activity link -->
-        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center justify-between">
-          <div class="flex items-center gap-3">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
             <div class="w-9 h-9 bg-violet-50 rounded-xl flex items-center justify-center flex-shrink-0">
               <i class="fa-solid fa-list-check text-violet-600 text-base"></i>
             </div>
-            <div>
-              <h3 class="font-semibold text-slate-800 text-sm">Agent Activity Log</h3>
+            <div class="min-w-0">
+              <h3 class="font-semibold text-slate-800 dark:text-slate-100 text-sm">Agent Activity Log</h3>
               <p class="text-slate-400 text-xs">See what the agent has done &amp; undo actions</p>
             </div>
           </div>
-          <button onclick="navTo('agent')" class="btn-secondary text-xs px-3 py-1.5">
-            View Log <i class="fa-solid fa-arrow-right ml-1"></i>
+          <button onclick="navTo('agent')" class="btn-secondary text-xs px-3 py-1.5 flex-shrink-0">
+            View <i class="fa-solid fa-arrow-right ml-1"></i>
           </button>
         </div>
 
@@ -164,14 +168,12 @@ const settingsPage = (() => {
   }
 
   function bindEvents() {
-    // Check if push is already subscribed
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       navigator.serviceWorker.ready.then(async reg => {
         const sub = await reg.pushManager.getSubscription();
         updatePushUI(sub);
       });
     }
-    // Load blacklist
     loadBlacklist();
   }
 
@@ -183,7 +185,7 @@ const settingsPage = (() => {
     if (subscription) {
       btn.innerHTML = '<i class="fa-solid fa-bell mr-1.5"></i>Disable';
       btn.className = 'btn-danger text-xs px-3 py-1.5';
-      if (area) area.innerHTML = '<span class="text-emerald-600 font-medium"><i class="fa-solid fa-circle-check mr-1.5"></i>Push notifications are active</span>';
+      if (area) area.innerHTML = '<span class="text-emerald-600 dark:text-emerald-400 font-medium"><i class="fa-solid fa-circle-check mr-1.5"></i>Push notifications are active</span>';
     } else {
       btn.innerHTML = '<i class="fa-solid fa-bell-slash mr-1.5"></i>Enable';
       btn.className = 'btn-secondary text-xs px-3 py-1.5';
@@ -197,14 +199,14 @@ const settingsPage = (() => {
     try {
       const entries = await api.getBlacklist();
       if (!entries.length) {
-        container.innerHTML = `<p class="text-xs text-slate-400 py-2">No entries yet.</p>`;
+        container.innerHTML = `<p class="text-xs text-slate-400 dark:text-slate-500 py-1">No entries yet.</p>`;
         return;
       }
       container.innerHTML = entries.map(e => `
-        <div class="flex items-center justify-between py-1.5">
-          <span class="text-sm text-slate-700 font-mono">${e.pattern}</span>
+        <div class="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700 last:border-0">
+          <span class="text-sm text-slate-700 dark:text-slate-300 font-mono truncate mr-2">${e.pattern}</span>
           <button onclick="settingsPage.removeBlacklistEntry(${e.id})"
-            class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors ml-2">
+            class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors flex-shrink-0">
             <i class="fa-solid fa-xmark text-xs"></i>
           </button>
         </div>
@@ -239,13 +241,6 @@ const settingsPage = (() => {
     }
   }
 
-  function arrayBufferToBase64Url(buffer) {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    bytes.forEach(b => binary += String.fromCharCode(b));
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  }
-
   async function togglePush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
@@ -266,8 +261,6 @@ const settingsPage = (() => {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(public_key),
       });
-
-      // Send the full sub.toJSON() — backend accepts both flat and nested keys format
       const subJson = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint };
       await api.subscribePush(subJson);
       updatePushUI(sub);
@@ -287,12 +280,12 @@ const settingsPage = (() => {
     }
   }
 
-  async function syncNow() {
+  async function syncNow(event) {
     try {
-      const btn = event.currentTarget;
-      btn.disabled = true;
+      const btn = event?.currentTarget || event?.target;
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>'; }
       await api.triggerEmailSync();
-      toast.success('Email sync triggered! Check the Activity Log for results.');
+      toast.success('Sync triggered! Check the Activity Log for results.');
       setTimeout(() => render(), 1500);
     } catch (e) {
       toast.error(e.message || 'Sync failed');
