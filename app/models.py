@@ -218,3 +218,11 @@ class PushSubscription(Base):
     auth = Column(Text, nullable=False)
     user_agent = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class EmailBlacklist(Base):
+    __tablename__ = "email_blacklists"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    pattern = Column(String, nullable=False)  # email address or @domain.com
+    created_at = Column(DateTime, default=datetime.utcnow)

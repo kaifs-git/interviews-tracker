@@ -103,5 +103,10 @@ const api = (() => {
     getVapidPublicKey: () => request('GET', '/api/push/vapid-public-key'),
     subscribePush: (sub) => request('POST', '/api/push/subscribe', sub),
     unsubscribePush: (endpoint) => request('DELETE', '/api/push/unsubscribe', { endpoint }),
+
+    // Email blacklist
+    getBlacklist: () => request('GET', '/api/email/blacklist'),
+    addBlacklist: (pattern) => request('POST', '/api/email/blacklist', { pattern }),
+    deleteBlacklist: (id) => request('DELETE', `/api/email/blacklist/${id}`),
   };
 })();

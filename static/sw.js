@@ -1,4 +1,4 @@
-const CACHE = 'interviews-tracker-v8';
+const CACHE = 'interviews-tracker-v9';
 const STATIC_ASSETS = [
   '/',
   '/static/app.css',

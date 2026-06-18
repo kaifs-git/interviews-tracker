@@ -14,9 +14,15 @@ const router = (() => {
     agent: agentPage,
   };
 
-  function navigate(page, params = {}) {
+  function navigate(page, params = {}, skipHash = false) {
     currentPage = page;
     currentParams = params;
+
+    // Update URL hash (unless we're called from the hashchange handler itself)
+    if (!skipHash) {
+      const hash = page + (params && params.id ? '/' + params.id : '');
+      window.location.hash = hash;
+    }
 
     // Update sidebar nav active state
     document.querySelectorAll('.nav-link').forEach(el => {
@@ -47,6 +53,22 @@ const router = (() => {
 
   function getCurrentPage() { return currentPage; }
   function getCurrentParams() { return currentParams; }
+
+  // Hash-based routing: restore page on hash change (e.g. browser back/forward)
+  window.addEventListener('hashchange', () => {
+    const hash = window.location.hash.replace('#', '');
+    if (!hash) {
+      navigate('dashboard', {}, true);
+      return;
+    }
+    const parts = hash.split('/');
+    const page = parts[0];
+    const id = parts[1] ? parseInt(parts[1], 10) : undefined;
+    const params = id ? { id } : {};
+    if (pages[page]) {
+      navigate(page, params, true);
+    }
+  });
 
   return { navigate, getCurrentPage, getCurrentParams };
 })();

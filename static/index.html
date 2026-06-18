@@ -17,6 +17,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
@@ -34,7 +35,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/static/app.css" />
 </head>
-<body class="h-full bg-slate-50 font-sans antialiased">
+<body class="h-full bg-slate-50 dark:bg-slate-950 font-sans antialiased">
 
 <!-- ═══════════════════════════════════════════════════ LOGIN PAGE -->
 <div id="login-page" class="hidden min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-4">
@@ -155,7 +156,7 @@
   <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 z-20 hidden" onclick="closeSidebar()"></div>
 
   <!-- Sidebar -->
-  <aside id="sidebar" class="w-64 bg-slate-900 flex flex-col fixed inset-y-0 left-0 z-30">
+  <aside id="sidebar" class="w-64 bg-slate-900 dark:bg-slate-950 dark:border-r dark:border-slate-800 flex flex-col fixed inset-y-0 left-0 z-30">
     <!-- Logo -->
     <div class="flex items-center justify-between px-4 py-4 border-b border-white/10 flex-shrink-0">
       <div class="flex items-center gap-3">
@@ -233,17 +234,24 @@
   <!-- Main wrapper -->
   <div class="lg:ml-64 flex flex-col min-h-screen">
     <!-- Header -->
-    <header class="bg-white/95 backdrop-blur-sm border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between sticky top-0 z-10">
+    <header class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between sticky top-0 z-10">
       <div class="flex items-center gap-3 min-w-0">
-        <button onclick="openSidebar()" class="lg:hidden p-2 -ml-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors flex-shrink-0">
+        <button onclick="openSidebar()" class="lg:hidden p-2 -ml-1 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex-shrink-0">
           <i class="fa-solid fa-bars text-lg"></i>
         </button>
         <div class="min-w-0">
-          <h1 id="page-title" class="text-base sm:text-lg font-bold text-slate-800 truncate leading-tight"></h1>
-          <p id="page-subtitle" class="text-slate-400 text-xs truncate hidden sm:block"></p>
+          <h1 id="page-title" class="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 truncate leading-tight"></h1>
+          <p id="page-subtitle" class="text-slate-400 dark:text-slate-500 text-xs truncate hidden sm:block"></p>
         </div>
       </div>
-      <div id="page-actions" class="flex items-center gap-2 flex-shrink-0 ml-3"></div>
+      <div class="flex items-center gap-2 flex-shrink-0 ml-3">
+        <div id="page-actions" class="flex items-center gap-2"></div>
+        <!-- Theme toggle -->
+        <button onclick="toggleTheme()" title="Toggle dark mode"
+          class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors flex-shrink-0">
+          <i id="theme-toggle-icon" class="fa-solid fa-moon text-sm"></i>
+        </button>
+      </div>
     </header>
 
     <!-- Page Content -->
@@ -252,7 +260,7 @@
 </div>
 
 <!-- Bottom Navigation (mobile) -->
-<nav id="bottom-nav" class="fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-10 lg:hidden bnav-safe hidden">
+<nav id="bottom-nav" class="fixed bottom-0 inset-x-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-10 lg:hidden bnav-safe hidden">
   <div class="flex justify-around items-center h-14 px-1">
     <button onclick="navTo('dashboard')" class="bottom-nav-btn flex flex-col items-center justify-center gap-0.5 py-1.5 px-3 text-slate-400 transition-colors min-w-[56px]" data-page="dashboard">
       <i class="fa-solid fa-gauge-high text-lg"></i>
@@ -279,19 +287,19 @@
 
 <!-- Modal -->
 <div id="modal-overlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-  <div id="modal-box" class="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+  <div id="modal-box" class="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
     <!-- Drag handle (mobile only) -->
     <div class="modal-drag-handle flex justify-center pt-3 pb-1 flex-shrink-0">
-      <div class="w-10 h-1 bg-slate-200 rounded-full"></div>
+      <div class="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
     </div>
-    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
-      <h2 id="modal-title" class="text-base font-semibold text-slate-800"></h2>
-      <button onclick="modal.close()" class="text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-lg hover:bg-slate-100">
+    <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+      <h2 id="modal-title" class="text-base font-semibold text-slate-800 dark:text-slate-100"></h2>
+      <button onclick="modal.close()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
         <i class="fa-solid fa-xmark text-lg"></i>
       </button>
     </div>
     <div id="modal-body" class="flex-1 overflow-y-auto p-5 sm:p-6"></div>
-    <div id="modal-footer" class="px-5 py-4 border-t border-slate-100 flex justify-end gap-2.5 flex-shrink-0 bg-slate-50/80"></div>
+    <div id="modal-footer" class="px-5 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2.5 flex-shrink-0 bg-slate-50/80 dark:bg-slate-800/50"></div>
   </div>
 </div>
 
@@ -299,10 +307,10 @@
 <div id="toast-container" class="fixed bottom-20 lg:bottom-4 right-3 z-50 flex flex-col gap-2 pointer-events-none max-w-xs sm:max-w-sm"></div>
 
 <!-- Loading Overlay -->
-<div id="loading-overlay" class="hidden fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
+<div id="loading-overlay" class="hidden fixed inset-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
   <div class="text-center">
     <div class="w-10 h-10 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" style="border-width:3px"></div>
-    <p class="text-slate-600 font-medium text-sm">Loading...</p>
+    <p class="text-slate-600 dark:text-slate-400 font-medium text-sm">Loading...</p>
   </div>
 </div>
 

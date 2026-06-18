@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
-from ..models import JobApplication, Company, Contact, InterviewRound, AgentActivityLog, EmailAccount
+from ..models import JobApplication, Company, Contact, InterviewRound, AgentActivityLog, EmailAccount, EmailBlacklist
 from .settings_service import get_setting
 from .push_notify import send_push
 from .ai_provider import call_agent
@@ -38,6 +38,26 @@ def process_email_for_user(
     email: dict,
 ) -> "AgentActivityLog | None":
     """Run the Gemini agent on a single email and persist results."""
+    # Blacklist check — skip before dedup so blacklisted senders are always logged as skipped
+    from_email = email.get("from_email", "").lower().strip()
+    blacklist = db.query(EmailBlacklist).filter_by(user_id=user_id).all()
+    for entry in blacklist:
+        p = entry.pattern.lower().strip()
+        if p == from_email or (p.startswith('@') and from_email.endswith(p)):
+            skip_log = AgentActivityLog(
+                user_id=user_id, email_account_id=email_account.id,
+                email_message_id=email["message_id"],
+                email_subject=email.get("subject", ""),
+                email_from=email.get("from_email", ""),
+                email_date=email.get("date"),
+                action_type="skipped",
+                summary=f"Blacklisted: {entry.pattern}",
+                status="done",
+            )
+            db.add(skip_log)
+            db.commit()
+            return skip_log
+
     # Dedup — skip if already successfully processed
     # Allow retrying errors but cap at 3 attempts to avoid infinite loops
     existing = db.query(AgentActivityLog).filter(

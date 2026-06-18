@@ -1,4 +1,4 @@
-// Settings page — email accounts + push notifications
+// Settings page — email accounts + push notifications + blacklist
 const settingsPage = (() => {
 
   async function render() {
@@ -119,6 +119,30 @@ const settingsPage = (() => {
           </div>
         </div>
 
+        <!-- Email Blacklist -->
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center">
+                <i class="fa-solid fa-ban text-red-500 text-base"></i>
+              </div>
+              <div>
+                <h3 class="font-semibold text-slate-800 text-sm">Email Blacklist</h3>
+                <p class="text-slate-400 text-xs">Emails from these addresses/domains will be skipped</p>
+              </div>
+            </div>
+          </div>
+          <div class="px-5 py-4 space-y-3">
+            <div id="blacklist-items"><!-- loaded dynamically --></div>
+            <div class="flex gap-2">
+              <input id="blacklist-input" type="text" placeholder="email@example.com or @domain.com"
+                class="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-400" />
+              <button onclick="settingsPage.addBlacklistEntry()" class="btn-primary text-xs px-4">Add</button>
+            </div>
+            <p class="text-xs text-slate-400">Use @domain.com to block all emails from a domain</p>
+          </div>
+        </div>
+
         <!-- Agent Activity link -->
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex items-center justify-between">
           <div class="flex items-center gap-3">
@@ -147,6 +171,8 @@ const settingsPage = (() => {
         updatePushUI(sub);
       });
     }
+    // Load blacklist
+    loadBlacklist();
   }
 
   function updatePushUI(subscription) {
@@ -162,6 +188,54 @@ const settingsPage = (() => {
       btn.innerHTML = '<i class="fa-solid fa-bell-slash mr-1.5"></i>Enable';
       btn.className = 'btn-secondary text-xs px-3 py-1.5';
       if (area) area.textContent = 'Click Enable to receive push notifications when the email agent adds or updates data.';
+    }
+  }
+
+  async function loadBlacklist() {
+    const container = document.getElementById('blacklist-items');
+    if (!container) return;
+    try {
+      const entries = await api.getBlacklist();
+      if (!entries.length) {
+        container.innerHTML = `<p class="text-xs text-slate-400 py-2">No entries yet.</p>`;
+        return;
+      }
+      container.innerHTML = entries.map(e => `
+        <div class="flex items-center justify-between py-1.5">
+          <span class="text-sm text-slate-700 font-mono">${e.pattern}</span>
+          <button onclick="settingsPage.removeBlacklistEntry(${e.id})"
+            class="p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors ml-2">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+      `).join('');
+    } catch (_) {
+      container.innerHTML = `<p class="text-xs text-red-400 py-2">Failed to load blacklist.</p>`;
+    }
+  }
+
+  async function addBlacklistEntry() {
+    const input = document.getElementById('blacklist-input');
+    if (!input) return;
+    const pattern = input.value.trim();
+    if (!pattern) { toast.error('Enter an email address or domain'); return; }
+    try {
+      await api.addBlacklist(pattern);
+      input.value = '';
+      toast.success(`Blacklisted: ${pattern}`);
+      loadBlacklist();
+    } catch (e) {
+      toast.error(e.message || 'Failed to add entry');
+    }
+  }
+
+  async function removeBlacklistEntry(id) {
+    try {
+      await api.deleteBlacklist(id);
+      toast.info('Entry removed');
+      loadBlacklist();
+    } catch (e) {
+      toast.error(e.message || 'Failed to remove entry');
     }
   }
 
@@ -249,5 +323,5 @@ const settingsPage = (() => {
     return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
   }
 
-  return { render, togglePush, connectGmail, syncNow, disconnectAccount };
+  return { render, togglePush, connectGmail, syncNow, disconnectAccount, loadBlacklist, addBlacklistEntry, removeBlacklistEntry };
 })();

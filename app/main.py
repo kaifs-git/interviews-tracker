@@ -12,6 +12,7 @@ from . import models
 from .routers import auth, companies, applications, interviews, contacts, admin
 from .routers.email_agent import router as email_router
 from .routers.push import router as push_router
+from .routers.blacklist import router as blacklist_router
 from .config import settings
 from .auth import hash_password
 
@@ -187,6 +188,7 @@ app.include_router(contacts.router)
 app.include_router(admin.router)
 app.include_router(email_router)
 app.include_router(push_router)
+app.include_router(blacklist_router)
 
 import struct
 import zlib
